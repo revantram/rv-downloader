@@ -116,14 +116,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (info != null) {
         _openFormatSelector(info);
       } else {
-        _showToast('Failed to retrieve video details');
+        _openFallbackFormatSelector(url);
       }
     } catch (e) {
       if (!mounted) return;
-      _showErrorDialog(e.toString());
+      _openFallbackFormatSelector(url);
     } finally {
       if (mounted) setState(() => _isFetching = false);
     }
+  }
+
+  void _openFallbackFormatSelector(String url) {
+    final plat = UrlDetector.identifyPlatform(url);
+    final platName = UrlDetector.getPlatformName(plat);
+    _openFormatSelector(
+      MediaInfo(
+        id: 'media_${DateTime.now().millisecondsSinceEpoch}',
+        title: '$platName Media',
+        duration: Duration.zero,
+        thumbnail: '',
+        uploader: platName,
+        webpageUrl: url,
+        description: '',
+        formats: const [],
+      ),
+    );
   }
 
   Future<void> _quickDownload() async {
@@ -136,10 +153,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final quality = SettingsService.instance.defaultQuality;
     final bitrate = SettingsService.instance.defaultBitrate;
     final isAudio = quality.contains('audio') || quality.contains('mp3');
+    final plat = UrlDetector.identifyPlatform(url);
+    final platName = UrlDetector.getPlatformName(plat);
 
     await NativeDownloaderService.instance.startDownload(
       url: url,
-      title: 'Downloading media...',
+      title: '$platName Media',
       quality: quality,
       isAudioOnly: isAudio,
       audioBitrate: bitrate,

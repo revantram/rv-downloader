@@ -106,6 +106,10 @@ class NativeDownloaderService extends ChangeNotifier {
           final f = File(filePath);
           if (f.existsSync()) {
             task.fileSizeBytes = f.lengthSync();
+            final name = f.uri.pathSegments.lastWhere((s) => s.isNotEmpty, orElse: () => '');
+            if (name.isNotEmpty && !name.startsWith('media_')) {
+              task.title = name;
+            }
           }
         } catch (_) {}
       }

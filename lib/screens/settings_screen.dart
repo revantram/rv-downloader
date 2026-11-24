@@ -349,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Version 1.0.6+7 • Architecture ARM64-v8a',
+                    'Version 1.0.7+8 • Architecture ARM64-v8a',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.35),
                       fontSize: 10,

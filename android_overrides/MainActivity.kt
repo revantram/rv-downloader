@@ -184,52 +184,87 @@ class MainActivity : FlutterActivity() {
                                 }
                                 return@launch
                             }
+
+                            var infoTitle = "Online Media"
+                            var infoThumbnail = ""
+                            var infoUploader = ""
+                            var infoDuration = 0
+                            val formatsList = mutableListOf<Map<String, Any?>>()
+
                             try {
                                 val request = YoutubeDLRequest(url)
-                                request.addOption("--no-playlist")
+                                request.addOption("--ignore-no-formats-error")
                                 request.addOption("--no-check-certificates")
                                 request.addOption("--no-warnings")
                                 request.addOption("--extractor-args", "instagram:app_id=ios")
-                                
-                                val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
-                                val formatsList = mutableListOf<Map<String, Any?>>()
 
-                                info.formats?.forEach { f ->
-                                    val fMap = mapOf(
-                                        "formatId" to (f.formatId ?: ""),
-                                        "formatNote" to (f.formatNote ?: ""),
-                                        "ext" to (f.ext ?: ""),
-                                        "vcodec" to (f.vcodec ?: ""),
-                                        "acodec" to (f.acodec ?: ""),
-                                        "filesize" to (f.fileSize ?: 0L),
-                                        "fps" to (f.fps ?: 0),
-                                        "height" to (f.height ?: 0),
-                                        "width" to (f.width ?: 0),
-                                        "tbr" to (f.tbr ?: 0)
-                                    )
-                                    formatsList.add(fMap)
+                                val info: VideoInfo? = try {
+                                    YoutubeDL.getInstance().getInfo(request)
+                                } catch (e: Throwable) {
+                                    Log.w("RVDownloader", "getInfo warning: ${e.message}")
+                                    null
                                 }
 
-                                val resultMap = mapOf(
-                                    "id" to (info.id ?: ""),
-                                    "title" to (info.title ?: "Untitled Media"),
-                                    "duration" to (info.duration ?: 0),
-                                    "thumbnail" to (info.thumbnail ?: ""),
-                                    "uploader" to (info.uploader ?: ""),
-                                    "webpageUrl" to (info.webpageUrl ?: url),
-                                    "description" to (info.description ?: ""),
-                                    "formats" to formatsList
-                                )
+                                if (info != null) {
+                                    infoTitle = info.title ?: infoTitle
+                                    infoThumbnail = info.thumbnail ?: ""
+                                    infoUploader = info.uploader ?: ""
+                                    infoDuration = info.duration ?: 0
 
-                                withContext(Dispatchers.Main) {
-                                    result.success(resultMap)
+                                    info.formats?.forEach { f ->
+                                        val fMap = mapOf(
+                                            "formatId" to (f.formatId ?: ""),
+                                            "formatNote" to (f.formatNote ?: ""),
+                                            "ext" to (f.ext ?: ""),
+                                            "vcodec" to (f.vcodec ?: ""),
+                                            "acodec" to (f.acodec ?: ""),
+                                            "filesize" to (f.fileSize ?: 0L),
+                                            "fps" to (f.fps ?: 0),
+                                            "height" to (f.height ?: 0),
+                                            "width" to (f.width ?: 0),
+                                            "tbr" to (f.tbr ?: 0)
+                                        )
+                                        formatsList.add(fMap)
+                                    }
                                 }
                             } catch (e: Throwable) {
-                                val errorMsg = e.message ?: e.localizedMessage ?: "Failed to fetch media info from URL"
-                                Log.e("RVDownloader", "fetchInfo error: $errorMsg", e)
-                                withContext(Dispatchers.Main) {
-                                    result.error("FETCH_INFO_ERROR", errorMsg, Log.getStackTraceString(e))
+                                Log.w("RVDownloader", "fetchInfo error: ${e.message}")
+                            }
+
+                            if (infoTitle == "Online Media" || infoTitle.isBlank()) {
+                                infoTitle = when {
+                                    url.contains("instagram.com") -> "Instagram Media"
+                                    url.contains("youtube.com") || url.contains("youtu.be") -> "YouTube Video"
+                                    url.contains("terabox") || url.contains("1024tera") -> "TeraBox Media"
+                                    url.contains("tiktok.com") -> "TikTok Video"
+                                    url.contains("facebook.com") || url.contains("fb.watch") -> "Facebook Video"
+                                    url.contains("twitter.com") || url.contains("x.com") -> "X / Twitter Video"
+                                    else -> "Online Media"
                                 }
+                            }
+
+                            if (formatsList.isEmpty()) {
+                                formatsList.addAll(listOf(
+                                    mapOf("formatId" to "1080p", "formatNote" to "1080p (Full HD)", "ext" to "mp4", "height" to 1080, "width" to 1920),
+                                    mapOf("formatId" to "720p", "formatNote" to "720p (HD)", "ext" to "mp4", "height" to 720, "width" to 1280),
+                                    mapOf("formatId" to "480p", "formatNote" to "480p (SD)", "ext" to "mp4", "height" to 480, "width" to 854),
+                                    mapOf("formatId" to "360p", "formatNote" to "360p (Low)", "ext" to "mp4", "height" to 360, "width" to 640)
+                                ))
+                            }
+
+                            val resultMap = mapOf(
+                                "id" to "media_${System.currentTimeMillis()}",
+                                "title" to infoTitle,
+                                "duration" to infoDuration,
+                                "thumbnail" to infoThumbnail,
+                                "uploader" to (if (infoUploader.isNotBlank()) infoUploader else infoTitle),
+                                "webpageUrl" to url,
+                                "description" to "",
+                                "formats" to formatsList
+                            )
+
+                            withContext(Dispatchers.Main) {
+                                result.success(resultMap)
                             }
                         }
                     }
@@ -263,22 +298,26 @@ class MainActivity : FlutterActivity() {
                                 ))
                                 return@launch
                             }
+                            val startTime = System.currentTimeMillis()
+                            val outDir = File(targetDir)
                             try {
-                                val outDir = File(targetDir)
                                 if (!outDir.exists()) {
                                     outDir.mkdirs()
                                 }
 
                                 val request = YoutubeDLRequest(url)
                                 request.addOption("--no-mtime")
-                                request.addOption("--no-playlist")
+                                request.addOption("-i")
+                                request.addOption("--ignore-no-formats-error")
                                 request.addOption("--no-check-certificates")
                                 request.addOption("--no-warnings")
                                 request.addOption("--extractor-args", "instagram:app_id=ios")
 
-                                val outputTemplate = if (!customTitle.isNullOrBlank()) {
+                                val outputTemplate = if (!customTitle.isNullOrBlank() && 
+                                    !customTitle.contains("Downloading media", ignoreCase = true) && 
+                                    !customTitle.contains("Online Media", ignoreCase = true)) {
                                     val safeName = customTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                                    "${outDir.absolutePath}/$safeName.%(ext)s"
+                                    "${outDir.absolutePath}/$safeName-%(id)s.%(ext)s"
                                 } else {
                                     "${outDir.absolutePath}/%(title).100s-%(id)s.%(ext)s"
                                 }
@@ -318,10 +357,11 @@ class MainActivity : FlutterActivity() {
 
                                 activeTasks.remove(taskId)
 
-                                val downloadedFile = scanAndFindNewestFile(outDir)
-                                if (downloadedFile != null && downloadedFile.exists()) {
-                                    scanMediaFile(downloadedFile.absolutePath)
+                                val recentFiles = scanRecentFiles(outDir, startTime)
+                                for (f in recentFiles) {
+                                    scanMediaFile(f.absolutePath)
                                 }
+                                val downloadedFile = recentFiles.maxByOrNull { it.lastModified() } ?: scanAndFindNewestFile(outDir)
 
                                 sendProgressEvent(mapOf(
                                     "taskId" to taskId,
@@ -337,6 +377,35 @@ class MainActivity : FlutterActivity() {
                                         || e.message?.contains("cancel", ignoreCase = true) == true
                                         || e.message?.contains("interrupted", ignoreCase = true) == true
 
+                                if (isCancelled) {
+                                    sendProgressEvent(mapOf(
+                                        "taskId" to taskId,
+                                        "status" to "cancelled",
+                                        "error" to "Download cancelled",
+                                        "line" to "Download cancelled"
+                                    ))
+                                    return@launch
+                                }
+
+                                // Check if media files were actually downloaded during this task
+                                val recentFiles = scanRecentFiles(outDir, startTime)
+                                for (f in recentFiles) {
+                                    scanMediaFile(f.absolutePath)
+                                }
+                                val downloadedFile = recentFiles.maxByOrNull { it.lastModified() }
+
+                                if (downloadedFile != null && downloadedFile.exists() && downloadedFile.length() > 1024) {
+                                    Log.i("RVDownloader", "File downloaded successfully despite yt-dlp exit status: ${downloadedFile.absolutePath} (${downloadedFile.length()} bytes)")
+                                    sendProgressEvent(mapOf(
+                                        "taskId" to taskId,
+                                        "status" to "completed",
+                                        "progress" to 100.0,
+                                        "filePath" to downloadedFile.absolutePath,
+                                        "line" to "Download finished successfully"
+                                    ))
+                                    return@launch
+                                }
+
                                 val errorMsg = e.message ?: e.localizedMessage ?: "Download failed: Unknown error"
                                 Log.e("RVDownloader", "startDownload failed: $errorMsg", e)
 
@@ -346,11 +415,13 @@ class MainActivity : FlutterActivity() {
                                     try {
                                         YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
                                     } catch (_: Throwable) {}
+                                } else if (errorMsg.contains("empty media response", ignoreCase = true)) {
+                                    userFriendlyError = "Instagram blocked anonymous access or requires an active session."
                                 }
 
                                 sendProgressEvent(mapOf(
                                     "taskId" to taskId,
-                                    "status" to if (isCancelled) "cancelled" else "failed",
+                                    "status" to "failed",
                                     "error" to userFriendlyError,
                                     "line" to userFriendlyError
                                 ))
@@ -430,10 +501,40 @@ class MainActivity : FlutterActivity() {
         return publicDir.absolutePath
     }
 
-    private fun scanAndFindNewestFile(dir: File): File? {
+    private fun scanRecentFiles(dir: File, minModifiedTime: Long = 0L): List<File> {
         return try {
             dir.listFiles()
-                ?.filter { it.isFile && (it.name.endsWith(".mp4") || it.name.endsWith(".mp3") || it.name.endsWith(".mkv") || it.name.endsWith(".webm") || it.name.endsWith(".m4a")) }
+                ?.filter {
+                    it.isFile &&
+                    it.length() > 1024 &&
+                    (minModifiedTime == 0L || it.lastModified() >= (minModifiedTime - 15000L)) &&
+                    (it.name.endsWith(".mp4", ignoreCase = true) ||
+                     it.name.endsWith(".mp3", ignoreCase = true) ||
+                     it.name.endsWith(".mkv", ignoreCase = true) ||
+                     it.name.endsWith(".webm", ignoreCase = true) ||
+                     it.name.endsWith(".m4a", ignoreCase = true))
+                } ?: emptyList()
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    private fun scanAndFindNewestFile(dir: File, minModifiedTime: Long = 0L): File? {
+        val files = scanRecentFiles(dir, minModifiedTime)
+        if (files.isNotEmpty()) {
+            return files.maxByOrNull { it.lastModified() }
+        }
+        return try {
+            dir.listFiles()
+                ?.filter { 
+                    it.isFile && 
+                    it.length() > 1024 &&
+                    (it.name.endsWith(".mp4", ignoreCase = true) ||
+                     it.name.endsWith(".mp3", ignoreCase = true) ||
+                     it.name.endsWith(".mkv", ignoreCase = true) ||
+                     it.name.endsWith(".webm", ignoreCase = true) ||
+                     it.name.endsWith(".m4a", ignoreCase = true)) 
+                }
                 ?.maxByOrNull { it.lastModified() }
         } catch (_: Throwable) {
             null
