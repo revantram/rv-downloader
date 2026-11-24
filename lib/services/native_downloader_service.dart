@@ -218,6 +218,24 @@ class NativeDownloaderService extends ChangeNotifier {
     }
   }
 
+  Future<bool> openUrl(String url) async {
+    try {
+      final res = await _methodChannel.invokeMethod('openUrl', {'url': url});
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> installApk(String path) async {
+    try {
+      final res = await _methodChannel.invokeMethod('installApk', {'path': path});
+      return res == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<String?> getPendingSharedText() async {
     try {
       final res = await _methodChannel.invokeMethod('getPendingSharedText');

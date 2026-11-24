@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsService extends ChangeNotifier {
@@ -11,6 +11,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyAutoPaste = 'auto_paste_clipboard';
   static const String _keyNotifyDone = 'notify_on_complete';
   static const String _keyYtDlpVersion = 'cached_ytdlp_version';
+  static const String _keyIsDarkTheme = 'is_dark_theme';
 
   String _defaultQuality = '1080p';
   String _defaultBitrate = '320k';
@@ -18,6 +19,7 @@ class SettingsService extends ChangeNotifier {
   bool _autoPasteClipboard = true;
   bool _notifyOnComplete = true;
   String _cachedYtDlpVersion = 'yt-dlp Engine';
+  bool _isDarkTheme = true;
 
   String get defaultQuality => _defaultQuality;
   String get defaultBitrate => _defaultBitrate;
@@ -25,6 +27,22 @@ class SettingsService extends ChangeNotifier {
   bool get autoPasteClipboard => _autoPasteClipboard;
   bool get notifyOnComplete => _notifyOnComplete;
   String get cachedYtDlpVersion => _cachedYtDlpVersion;
+  bool get isDarkTheme => _isDarkTheme;
+
+  // Theme Dynamic Palette
+  Color get backgroundColor => _isDarkTheme ? Colors.black : const Color(0xFFF8FAFC);
+  Color get surfaceColor => _isDarkTheme ? const Color(0xFF101420) : Colors.white;
+  Color get cardBackgroundColor => _isDarkTheme ? Colors.white.withValues(alpha: 0.05) : Colors.white;
+  Color get cardBorderColor => _isDarkTheme ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0);
+  Color get primaryTextColor => _isDarkTheme ? Colors.white : const Color(0xFF0F172A);
+  Color get secondaryTextColor => _isDarkTheme ? Colors.white.withValues(alpha: 0.55) : const Color(0xFF64748B);
+  Color get subtleTextColor => _isDarkTheme ? Colors.white.withValues(alpha: 0.35) : const Color(0xFF94A3B8);
+  Color get dividerColor => _isDarkTheme ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFF1F5F9);
+  Color get textFieldBg => _isDarkTheme ? Colors.white.withValues(alpha: 0.07) : const Color(0xFFF8FAFC);
+  Color get textFieldBorder => _isDarkTheme ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFCBD5E1);
+  Color get shadowColor => _isDarkTheme ? Colors.black.withValues(alpha: 0.45) : const Color(0xFF64748B).withValues(alpha: 0.12);
+  Color get bottomNavBg => _isDarkTheme ? const Color(0xFF111624).withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.95);
+  Color get bottomNavBorder => _isDarkTheme ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFE2E8F0);
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,6 +52,21 @@ class SettingsService extends ChangeNotifier {
     _autoPasteClipboard = prefs.getBool(_keyAutoPaste) ?? true;
     _notifyOnComplete = prefs.getBool(_keyNotifyDone) ?? true;
     _cachedYtDlpVersion = prefs.getString(_keyYtDlpVersion) ?? 'yt-dlp Engine';
+    _isDarkTheme = prefs.getBool(_keyIsDarkTheme) ?? true;
+    notifyListeners();
+  }
+
+  Future<void> toggleTheme() async {
+    _isDarkTheme = !_isDarkTheme;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIsDarkTheme, _isDarkTheme);
+    notifyListeners();
+  }
+
+  Future<void> setDarkTheme(bool val) async {
+    _isDarkTheme = val;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyIsDarkTheme, val);
     notifyListeners();
   }
 

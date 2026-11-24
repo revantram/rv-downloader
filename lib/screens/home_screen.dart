@@ -11,6 +11,7 @@ import '../widgets/format_selector_sheet.dart';
 import '../widgets/liquid_button.dart';
 import '../widgets/liquid_glass_card.dart';
 import '../widgets/liquid_text_field.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -285,132 +286,155 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final pad = MediaQuery.paddingOf(context);
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) {
+        final theme = SettingsService.instance;
+        final isDark = theme.isDarkTheme;
 
-    return Scaffold(
-      backgroundColor: Colors.black, // Pure OLED Black
-      body: Stack(
-        children: [
-          // Subtle Ambient Background Glows
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF0A84FF).withValues(alpha: 0.12),
+        return Scaffold(
+          backgroundColor: theme.backgroundColor,
+          body: Stack(
+            children: [
+              // Subtle Ambient Background Glows
+              Positioned(
+                top: -60,
+                right: -60,
+                child: Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF0A84FF).withValues(alpha: isDark ? 0.12 : 0.06),
+                  ),
+                ),
               ),
-            ),
-          ),
-          Positioned(
-            top: 280,
-            left: -80,
-            child: Container(
-              width: 220,
-              height: 220,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF9333EA).withValues(alpha: 0.08),
+              Positioned(
+                top: 280,
+                left: -80,
+                child: Container(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF9333EA).withValues(alpha: isDark ? 0.08 : 0.04),
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          SafeArea(
-            bottom: false,
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                // Top App Bar
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              SafeArea(
+                bottom: false,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // Top App Bar
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'RV ',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.5,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'RV ',
+                                      style: TextStyle(
+                                        color: theme.primaryTextColor,
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const Text(
+                                      'Downloader',
+                                      style: TextStyle(
+                                        color: Color(0xFF38BDF8),
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Downloader',
+                                  'Personal Media Downloader powered by yt-dlp',
                                   style: TextStyle(
-                                    color: const Color(0xFF38BDF8),
-                                    fontSize: 26,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.5,
+                                    color: theme.secondaryTextColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Personal Media Downloader powered by yt-dlp',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.45),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
+
+                            // Top Right: Theme Toggle Button + Engine Status Capsule
+                            Row(
+                              children: [
+                                const ThemeToggleButton(),
+                                const SizedBox(width: 8),
+                                ListenableBuilder(
+                                  listenable: NativeDownloaderService.instance,
+                                  builder: (context, _) {
+                                    final ver = NativeDownloaderService.instance.engineVersion;
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 7),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.07)
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? Colors.white.withValues(alpha: 0.15)
+                                              : const Color(0xFFE2E8F0),
+                                          width: 0.8,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: theme.shadowColor,
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Color(0xFF34D399),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            ver.split(' ').first,
+                                            style: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white.withValues(alpha: 0.8)
+                                                  : const Color(0xFF0F172A),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-
-                        // Engine Status Capsule
-                        ListenableBuilder(
-                          listenable: NativeDownloaderService.instance,
-                          builder: (context, _) {
-                            final ver = NativeDownloaderService.instance.engineVersion;
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.07),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 0.8,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFF34D399),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    ver.split(' ').first,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
                 // URL Input Card
                 SliverToBoxAdapter(
@@ -427,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               Text(
                                 'DOWNLOAD MEDIA',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: theme.secondaryTextColor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5,
@@ -440,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF0A84FF)
-                                        .withValues(alpha: 0.2),
+                                        .withValues(alpha: isDark ? 0.2 : 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: const Color(0xFF38BDF8)
@@ -469,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 'Paste TeraBox, Instagram, YouTube, TikTok link...',
                             prefixIcon: Icon(
                               Icons.link_rounded,
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: theme.secondaryTextColor,
                               size: 22,
                             ),
                             onPaste: _pasteFromClipboard,
@@ -510,21 +534,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               Expanded(
                                 flex: 2,
                                 child: LiquidButton(
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.08),
+                                  backgroundColor: isDark
+                                      ? Colors.white.withValues(alpha: 0.08)
+                                      : const Color(0xFFF1F5F9),
                                   onTap: _quickDownload,
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.bolt_rounded,
+                                      const Icon(Icons.bolt_rounded,
                                           color: Color(0xFF38BDF8), size: 18),
-                                      SizedBox(width: 4),
+                                      const SizedBox(width: 4),
                                       Text(
                                         'Quick DL',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                                           fontSize: 13,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ],
@@ -551,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         Text(
                           'DOWNLOAD QUEUE & ACTIVITY',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
+                            color: theme.secondaryTextColor,
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
@@ -568,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               child: Text(
                                 'Clear finished',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.4),
+                                  color: theme.secondaryTextColor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -601,13 +626,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 Icon(
                                   Icons.cloud_download_outlined,
                                   size: 48,
-                                  color: Colors.white.withValues(alpha: 0.2),
+                                  color: theme.subtleTextColor,
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No active downloads',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
+                                    color: theme.primaryTextColor,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -616,7 +641,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 Text(
                                   'Paste a link above to start downloading media',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.3),
+                                    color: theme.secondaryTextColor,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -646,6 +671,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
+    );
+      },
     );
   }
 }

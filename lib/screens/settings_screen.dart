@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/native_downloader_service.dart';
 import '../services/settings_service.dart';
+import '../widgets/developer_options_card.dart';
 import '../widgets/liquid_button.dart';
 import '../widgets/liquid_glass_card.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -70,137 +72,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = SettingsService.instance;
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) {
+        final settings = SettingsService.instance;
+        final isDark = settings.isDarkTheme;
 
-    return Scaffold(
-      backgroundColor: Colors.black, // Pure OLED
-      body: SafeArea(
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 90),
-          children: [
-            // Title
-            const Text(
-              'Settings & Engine',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Customize your download engine and preferences',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 20),
+        return Scaffold(
+          backgroundColor: settings.backgroundColor,
+          body: SafeArea(
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 90),
+              children: [
+                // Top Header Row with Theme Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Settings & Engine',
+                          style: TextStyle(
+                            color: settings.primaryTextColor,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Customize your download engine and preferences',
+                          style: TextStyle(
+                            color: settings.secondaryTextColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const ThemeToggleButton(),
+                  ],
+                ),
+                const SizedBox(height: 18),
 
-            // yt-dlp Section
-            _buildSectionHeader('CORE YT-DLP ENGINE'),
-            const SizedBox(height: 8),
-            LiquidGlassCard(
-              padding: const EdgeInsets.all(18),
-              borderRadius: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // DEVELOPER OPTIONS & IN-APP UPDATE CARD AT THE VERY TOP
+                const DeveloperOptionsCard(),
+                const SizedBox(height: 22),
+
+                // yt-dlp Section
+                _buildSectionHeader('CORE YT-DLP ENGINE', settings.secondaryTextColor),
+                const SizedBox(height: 8),
+                LiquidGlassCard(
+                  padding: const EdgeInsets.all(18),
+                  borderRadius: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'yt-dlp Version',
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'yt-dlp Version',
+                            style: TextStyle(
+                              color: settings.primaryTextColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          ListenableBuilder(
+                            listenable: NativeDownloaderService.instance,
+                            builder: (context, _) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0A84FF).withValues(alpha: 0.18),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  NativeDownloaderService.instance.engineVersion,
+                                  style: const TextStyle(
+                                    color: Color(0xFF38BDF8),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'When download links fail or video platforms change their extractors, tap below to pull the latest official yt-dlp release on the fly.',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          color: settings.secondaryTextColor,
+                          fontSize: 12,
+                          height: 1.35,
                         ),
                       ),
+                      const SizedBox(height: 14),
                       ListenableBuilder(
                         listenable: NativeDownloaderService.instance,
                         builder: (context, _) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0A84FF).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
-                                width: 0.8,
-                              ),
+                          return LiquidButton(
+                            isLoading: NativeDownloaderService.instance.isUpdatingEngine,
+                            onTap: _updateEngine,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0A84FF), Color(0xFF0066CC)],
                             ),
-                            child: Text(
-                              NativeDownloaderService.instance.engineVersion,
-                              style: const TextStyle(
-                                color: Color(0xFF38BDF8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.system_update_rounded,
+                                    color: Colors.white, size: 18),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Update yt-dlp Extractor Now',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'When download links fail or video platforms change their extractors, tap below to pull the latest official yt-dlp release on the fly.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 12,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ListenableBuilder(
-                    listenable: NativeDownloaderService.instance,
-                    builder: (context, _) {
-                      return LiquidButton(
-                        isLoading: NativeDownloaderService.instance.isUpdatingEngine,
-                        onTap: _updateEngine,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0A84FF), Color(0xFF0066CC)],
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.system_update_rounded,
-                                color: Colors.white, size: 18),
-                            SizedBox(width: 8),
-                            Text(
-                              'Update yt-dlp Extractor Now',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
-            // Defaults Section
-            _buildSectionHeader('DEFAULT QUALITY PREFERENCES'),
-            const SizedBox(height: 8),
-            LiquidGlassCard(
-              padding: const EdgeInsets.all(16),
-              borderRadius: 20,
-              child: Column(
-                children: [
-                  ListenableBuilder(
-                    listenable: settings,
-                    builder: (context, _) {
-                      return _buildDropdownRow(
+                // Defaults Section
+                _buildSectionHeader('DEFAULT QUALITY PREFERENCES', settings.secondaryTextColor),
+                const SizedBox(height: 8),
+                LiquidGlassCard(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 20,
+                  child: Column(
+                    children: [
+                      _buildDropdownRow(
                         title: 'Default Video Quality',
                         value: settings.defaultQuality,
                         items: const [
@@ -211,14 +229,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (val) {
                           if (val != null) settings.setDefaultQuality(val);
                         },
-                      );
-                    },
-                  ),
-                  const Divider(color: Colors.white12, height: 24),
-                  ListenableBuilder(
-                    listenable: settings,
-                    builder: (context, _) {
-                      return _buildDropdownRow(
+                        textColor: settings.primaryTextColor,
+                        dropdownBg: settings.surfaceColor,
+                      ),
+                      Divider(color: settings.dividerColor, height: 24),
+                      _buildDropdownRow(
                         title: 'Default MP3 Bitrate',
                         value: settings.defaultBitrate,
                         items: const [
@@ -230,31 +245,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onChanged: (val) {
                           if (val != null) settings.setDefaultBitrate(val);
                         },
-                      );
-                    },
+                        textColor: settings.primaryTextColor,
+                        dropdownBg: settings.surfaceColor,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
 
-            // Automation & Storage
-            _buildSectionHeader('AUTOMATION & STORAGE'),
-            const SizedBox(height: 8),
-            LiquidGlassCard(
-              padding: const EdgeInsets.all(16),
-              borderRadius: 20,
-              child: Column(
-                children: [
-                  ListenableBuilder(
-                    listenable: settings,
-                    builder: (context, _) {
-                      return SwitchListTile(
+                // Automation & Storage
+                _buildSectionHeader('AUTOMATION & STORAGE', settings.secondaryTextColor),
+                const SizedBox(height: 8),
+                LiquidGlassCard(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 20,
+                  child: Column(
+                    children: [
+                      SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text(
+                        title: Text(
                           'Auto-paste link from clipboard',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: settings.primaryTextColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -262,114 +274,114 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         subtitle: Text(
                           'Automatically detects copied links when app opens',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
+                            color: settings.secondaryTextColor,
                             fontSize: 11,
                           ),
                         ),
                         value: settings.autoPasteClipboard,
                         activeColor: const Color(0xFF0A84FF),
                         onChanged: (val) => settings.setAutoPasteClipboard(val),
-                      );
-                    },
+                      ),
+                      Divider(color: settings.dividerColor, height: 20),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Download Directory Path',
+                            style: TextStyle(
+                              color: settings.primaryTextColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Public folder on device storage accessible to gallery & players',
+                            style: TextStyle(
+                              color: settings.secondaryTextColor,
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: settings.textFieldBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: settings.textFieldBorder,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _pathController,
+                              style: TextStyle(color: settings.primaryTextColor, fontSize: 13),
+                              onSubmitted: (val) => settings.setDownloadPath(val.trim()),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(vertical: 10),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const Divider(color: Colors.white12, height: 20),
-                  Column(
+                ),
+                const SizedBox(height: 24),
+
+                // Privacy & Personal Note
+                _buildSectionHeader('APPLICATION INFO', settings.secondaryTextColor),
+                const SizedBox(height: 8),
+                LiquidGlassCard(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 20,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Download Directory Path',
+                      Text(
+                        'RV Downloader - Personal Media Downloader',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: settings.primaryTextColor,
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Public folder on device storage accessible to gallery & players',
+                        'Built strictly for private personal offline backup use. Powered by native yt-dlp Python engine.',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: settings.secondaryTextColor,
                           fontSize: 11,
+                          height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _pathController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          onSubmitted: (val) => settings.setDownloadPath(val.trim()),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
-                          ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Version 1.0.8+9 • Architecture ARM64-v8a',
+                        style: TextStyle(
+                          color: settings.subtleTextColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-
-            // Privacy & Personal Note
-            _buildSectionHeader('APPLICATION INFO'),
-            const SizedBox(height: 8),
-            LiquidGlassCard(
-              padding: const EdgeInsets.all(16),
-              borderRadius: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'RV Downloader - Personal Media Downloader',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Built strictly for private personal offline backup use. Powered by native yt-dlp Python engine.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 11,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version 1.0.7+8 • Architecture ARM64-v8a',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(String title, Color color) {
     return Text(
       title,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.45),
+        color: color,
         fontSize: 11,
         fontWeight: FontWeight.w800,
         letterSpacing: 0.6,
@@ -382,21 +394,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String value,
     required List<DropdownMenuItem<String>> items,
     required ValueChanged<String?> onChanged,
+    required Color textColor,
+    required Color dropdownBg,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: textColor,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
         DropdownButton<String>(
           value: value,
-          dropdownColor: const Color(0xFF161B27),
+          dropdownColor: dropdownBg,
           style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13, fontWeight: FontWeight.w700),
           underline: const SizedBox.shrink(),
           icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF38BDF8)),

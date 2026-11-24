@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../utils/file_utils.dart';
 import '../widgets/liquid_glass_card.dart';
 import '../widgets/liquid_text_field.dart';
+import '../widgets/theme_toggle_button.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -47,153 +49,167 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black, // Pure OLED
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) {
+        final theme = SettingsService.instance;
+        final isDark = theme.isDarkTheme;
+
+        return Scaffold(
+          backgroundColor: theme.backgroundColor,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Media Storage',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      ListenableBuilder(
-                        listenable: StorageService.instance,
-                        builder: (context, _) {
-                          final count = StorageService.instance.items.length;
-                          final totalSize = FileUtils.formatBytes(
-                              StorageService.instance.totalSizeBytes);
-                          return Text(
-                            '$count Files • $totalSize Total',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-                    onPressed: () => StorageService.instance.refresh(),
-                  ),
-                ],
-              ),
-            ),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: LiquidTextField(
-                controller: _searchController,
-                hintText: 'Search offline files...',
-                prefixIcon: Icon(
-                  Icons.search_rounded,
-                  color: Colors.white.withValues(alpha: 0.5),
-                  size: 20,
-                ),
-                keyboardType: TextInputType.text,
-              ),
-            ),
-
-            // Filter Tabs
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  _buildFilterChip('All Media', 0),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('Videos Only', 1),
-                  const SizedBox(width: 8),
-                  _buildFilterChip('MP3 Audio', 2),
-                ],
-              ),
-            ),
-
-            // Files List
-            Expanded(
-              child: ListenableBuilder(
-                listenable: StorageService.instance,
-                builder: (context, _) {
-                  if (StorageService.instance.isLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF0A84FF),
-                      ),
-                    );
-                  }
-
-                  final filtered = _getFilteredItems(StorageService.instance.items);
-
-                  if (filtered.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.folder_open_rounded,
-                            size: 54,
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                          const SizedBox(height: 12),
                           Text(
-                            'No downloaded media found',
+                            'Media Storage',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              color: theme.primaryTextColor,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Completed downloads will appear here',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              fontSize: 12,
-                            ),
+                          const SizedBox(height: 2),
+                          ListenableBuilder(
+                            listenable: StorageService.instance,
+                            builder: (context, _) {
+                              final count = StorageService.instance.items.length;
+                              final totalSize = FileUtils.formatBytes(
+                                  StorageService.instance.totalSizeBytes);
+                              return Text(
+                                '$count Files • $totalSize Total',
+                                style: TextStyle(
+                                  color: theme.secondaryTextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
-                    );
-                  }
+                      Row(
+                        children: [
+                          const ThemeToggleButton(),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.refresh_rounded, color: theme.secondaryTextColor),
+                            onPressed: () => StorageService.instance.refresh(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
 
-                  return ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 8, bottom: 90),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      return _buildStorageItemCard(item);
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: LiquidTextField(
+                    controller: _searchController,
+                    hintText: 'Search offline files...',
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: theme.secondaryTextColor,
+                      size: 20,
+                    ),
+                    keyboardType: TextInputType.text,
+                  ),
+                ),
+
+                // Filter Tabs
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All Media', 0, isDark),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('Videos Only', 1, isDark),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('MP3 Audio', 2, isDark),
+                    ],
+                  ),
+                ),
+
+                // Files List
+                Expanded(
+                  child: ListenableBuilder(
+                    listenable: StorageService.instance,
+                    builder: (context, _) {
+                      if (StorageService.instance.isLoading) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF0A84FF),
+                          ),
+                        );
+                      }
+
+                      final filtered = _getFilteredItems(StorageService.instance.items);
+
+                      if (filtered.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.folder_open_rounded,
+                                size: 54,
+                                color: theme.subtleTextColor,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No downloaded media found',
+                                style: TextStyle(
+                                  color: theme.primaryTextColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Completed downloads will appear here',
+                                style: TextStyle(
+                                  color: theme.secondaryTextColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.only(top: 8, bottom: 90),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final item = filtered[index];
+                          return _buildStorageItemCard(item, theme, isDark);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildFilterChip(String label, int index) {
+  Widget _buildFilterChip(String label, int index, bool isDark) {
     final isSelected = _selectedFilterIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedFilterIndex = index),
@@ -201,20 +217,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF0A84FF).withValues(alpha: 0.22)
-              : Colors.white.withValues(alpha: 0.05),
+              ? const Color(0xFF0A84FF).withValues(alpha: isDark ? 0.22 : 0.15)
+              : (isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9)),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF38BDF8)
-                : Colors.white.withValues(alpha: 0.1),
+                : (isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE2E8F0)),
             width: isSelected ? 1.2 : 0.8,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white60,
+            color: isSelected
+                ? (isDark ? Colors.white : const Color(0xFF0A84FF))
+                : (isDark ? Colors.white60 : const Color(0xFF64748B)),
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -223,7 +241,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildStorageItemCard(MediaStorageItem item) {
+  Widget _buildStorageItemCard(MediaStorageItem item, SettingsService theme, bool isDark) {
     final dateFormat = DateFormat('MMM d, yyyy • HH:mm');
     final formattedDate = dateFormat.format(item.modifiedAt);
 
@@ -240,8 +258,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             height: 44,
             decoration: BoxDecoration(
               color: item.isAudio
-                  ? const Color(0xFF9333EA).withValues(alpha: 0.18)
-                  : const Color(0xFF0A84FF).withValues(alpha: 0.18),
+                  ? const Color(0xFF9333EA).withValues(alpha: isDark ? 0.18 : 0.12)
+                  : const Color(0xFF0A84FF).withValues(alpha: isDark ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: item.isAudio
@@ -267,8 +285,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   item.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: theme.primaryTextColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -287,7 +305,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     Text(
                       ' • $formattedDate',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: theme.secondaryTextColor,
                         fontSize: 11,
                       ),
                     ),
@@ -299,40 +317,40 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
           // Action Menu
           IconButton(
-            icon: const Icon(Icons.ios_share_rounded, color: Colors.white70, size: 20),
+            icon: Icon(Icons.ios_share_rounded, color: theme.secondaryTextColor, size: 20),
             onPressed: () => StorageService.instance.shareItem(item),
           ),
           IconButton(
             icon: Icon(Icons.delete_outline_rounded,
-                color: Colors.white.withValues(alpha: 0.4), size: 20),
-            onPressed: () => _confirmDelete(item),
+                color: theme.secondaryTextColor, size: 20),
+            onPressed: () => _confirmDelete(item, theme),
           ),
         ],
       ),
     );
   }
 
-  void _confirmDelete(MediaStorageItem item) {
+  void _confirmDelete(MediaStorageItem item, SettingsService theme) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF131824),
+        backgroundColor: theme.surfaceColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: theme.cardBorderColor,
             width: 0.8,
           ),
         ),
-        title: const Text('Delete File', style: TextStyle(color: Colors.white)),
+        title: Text('Delete File', style: TextStyle(color: theme.primaryTextColor, fontWeight: FontWeight.w700)),
         content: Text(
           'Are you sure you want to delete "${item.name}" from your phone storage?',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+          style: TextStyle(color: theme.secondaryTextColor, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text('Cancel', style: TextStyle(color: theme.secondaryTextColor)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -343,7 +361,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Navigator.pop(ctx);
               StorageService.instance.deleteItem(item);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
           ),
         ],
       ),

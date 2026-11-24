@@ -33,23 +33,44 @@ class RVDownloaderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RV Downloader',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.black,
-        primaryColor: const Color(0xFF0A84FF),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF0A84FF),
-          secondary: Color(0xFF38BDF8),
-          surface: Color(0xFF101420),
-          background: Colors.black,
-        ),
-        fontFamily: 'Roboto',
-        useMaterial3: true,
-      ),
-      home: const RootNavigationContainer(),
+    return ListenableBuilder(
+      listenable: SettingsService.instance,
+      builder: (context, _) {
+        final settings = SettingsService.instance;
+        final isDark = settings.isDarkTheme;
+
+        // Dynamic system bars overlay
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          systemNavigationBarColor: isDark ? Colors.black : Colors.white,
+          systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        ));
+
+        return MaterialApp(
+          title: 'RV Downloader',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            brightness: isDark ? Brightness.dark : Brightness.light,
+            scaffoldBackgroundColor: settings.backgroundColor,
+            primaryColor: const Color(0xFF0A84FF),
+            colorScheme: ColorScheme(
+              brightness: isDark ? Brightness.dark : Brightness.light,
+              primary: const Color(0xFF0A84FF),
+              onPrimary: Colors.white,
+              secondary: const Color(0xFF38BDF8),
+              onSecondary: Colors.white,
+              error: const Color(0xFFEF4444),
+              onError: Colors.white,
+              surface: settings.surfaceColor,
+              onSurface: settings.primaryTextColor,
+            ),
+            fontFamily: 'Roboto',
+            useMaterial3: true,
+          ),
+          home: const RootNavigationContainer(),
+        );
+      },
     );
   }
 }
@@ -90,8 +111,11 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = SettingsService.instance;
+    final isDark = theme.isDarkTheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.backgroundColor,
       body: Stack(
         children: [
           IndexedStack(
@@ -112,15 +136,15 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111624).withValues(alpha: 0.8),
+                    color: theme.bottomNavBg,
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.16),
+                      color: theme.bottomNavBorder,
                       width: 0.9,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
+                        color: theme.shadowColor,
                         blurRadius: 28,
                         offset: const Offset(0, 10),
                       ),
@@ -134,18 +158,21 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
                         icon: Icons.cloud_download_rounded,
                         activeIcon: Icons.cloud_download_rounded,
                         label: 'Downloader',
+                        isDark: isDark,
                       ),
                       _buildNavItem(
                         index: 1,
                         icon: Icons.folder_rounded,
                         activeIcon: Icons.folder_rounded,
                         label: 'Storage',
+                        isDark: isDark,
                       ),
                       _buildNavItem(
                         index: 2,
                         icon: Icons.settings_rounded,
                         activeIcon: Icons.settings_rounded,
                         label: 'Settings',
+                        isDark: isDark,
                       ),
                     ],
                   ),
@@ -163,6 +190,7 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
     required IconData icon,
     required IconData activeIcon,
     required String label,
+    required bool isDark,
   }) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
@@ -182,12 +210,14 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF0A84FF).withValues(alpha: 0.22)
+              ? const Color(0xFF0A84FF).withValues(alpha: isDark ? 0.22 : 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
           border: isSelected
               ? Border.all(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.45),
+                  color: isDark
+                      ? const Color(0xFF38BDF8).withValues(alpha: 0.45)
+                      : const Color(0xFF0A84FF).withValues(alpha: 0.4),
                   width: 0.8,
                 )
               : null,
@@ -199,15 +229,17 @@ class _RootNavigationContainerState extends State<RootNavigationContainer> {
               isSelected ? activeIcon : icon,
               size: 22,
               color: isSelected
-                  ? const Color(0xFF38BDF8)
-                  : Colors.white.withValues(alpha: 0.45),
+                  ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0A84FF))
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.45)
+                      : const Color(0xFF64748B)),
             ),
             if (isSelected) ...[
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0A84FF),
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),

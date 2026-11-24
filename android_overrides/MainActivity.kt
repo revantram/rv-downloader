@@ -480,6 +480,34 @@ class MainActivity : FlutterActivity() {
                         }
                     }
 
+                    "openUrl" -> {
+                        val url = call.argument<String>("url")
+                        if (!url.isNullOrBlank()) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(intent)
+                                result.success(true)
+                            } catch (e: Throwable) {
+                                Log.e("RVDownloader", "Failed to open URL: ${e.message}")
+                                result.success(false)
+                            }
+                        } else {
+                            result.error("INVALID_URL", "URL is empty", null)
+                        }
+                    }
+
+                    "installApk" -> {
+                        val path = call.argument<String>("path")
+                        if (!path.isNullOrBlank()) {
+                            val success = installApkFile(path)
+                            result.success(success)
+                        } else {
+                            result.error("INVALID_PATH", "Path is empty", null)
+                        }
+                    }
+
                     else -> result.notImplemented()
                 }
             }
@@ -607,6 +635,30 @@ class MainActivity : FlutterActivity() {
             true
         } catch (e: Throwable) {
             Log.e("RVDownloader", "Failed to share file: ${e.message}")
+            false
+        }
+    }
+
+    private fun installApkFile(filePath: String): Boolean {
+        return try {
+            val file = File(filePath)
+            if (!file.exists()) return false
+
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${applicationContext.packageName}.fileprovider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            true
+        } catch (e: Throwable) {
+            Log.e("RVDownloader", "Failed to install APK: ${e.message}")
             false
         }
     }
