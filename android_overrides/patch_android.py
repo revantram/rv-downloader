@@ -14,18 +14,7 @@ def patch_app_gradle():
         content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', content)
         content = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', content)
 
-        # Restrict NDK to arm64-v8a only
-        ndk_filter = """
-        ndk {
-            abiFilters.clear()
-            abiFilters.add("arm64-v8a")
-        }
-"""
-        if "abiFilters.add(\"arm64-v8a\")" not in content:
-            if "defaultConfig {" in content:
-                content = content.replace("defaultConfig {", "defaultConfig {" + ndk_filter)
-
-        # Release signing and R8 minification/shrinking
+        # Release signing config
         signing_block = """
     signingConfigs {
         create("release") {
@@ -53,10 +42,9 @@ def patch_app_gradle():
         if 'create("release")' not in content:
             content = content.replace("buildTypes {", signing_block + "\n    buildTypes {")
 
-        # Configure release build type with R8 shrinking
         content = content.replace(
             'signingConfigs.getByName("debug")',
-            'signingConfigs.getByName("release")\n            isMinifyEnabled = true\n            isShrinkResources = true\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
+            'signingConfigs.getByName("release")'
         )
 
         # Dependencies
@@ -75,7 +63,7 @@ dependencies {
 
         with open(kts_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle.kts with R8 shrinking & ARM64 optimization")
+        print("Successfully patched build.gradle.kts")
 
     elif os.path.exists(groovy_path):
         print(f"Patching {groovy_path}...")
@@ -85,16 +73,6 @@ dependencies {
         # Update minSdk
         content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24', content)
         content = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', content)
-
-        # Restrict NDK
-        ndk_filter = """
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
-"""
-        if "'arm64-v8a'" not in content:
-            if "defaultConfig {" in content:
-                content = content.replace("defaultConfig {", "defaultConfig {" + ndk_filter)
 
         signing_block = """
     signingConfigs {
@@ -113,6 +91,9 @@ dependencies {
         resources {
             excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1', 'DebugProbesKt.bin']
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 """
         if "signingConfigs {" not in content or "release {" not in content:
@@ -120,7 +101,7 @@ dependencies {
 
         content = content.replace(
             "signingConfigs.debug",
-            "signingConfigs.release\n            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
+            "signingConfigs.release"
         )
 
         dep_block = """
@@ -138,7 +119,7 @@ dependencies {
 
         with open(groovy_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle with R8 shrinking & ARM64 optimization")
+        print("Successfully patched build.gradle")
 
 def patch_root_repositories():
     settings_gradle = "android/settings.gradle"

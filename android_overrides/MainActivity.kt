@@ -34,7 +34,6 @@ class MainActivity : FlutterActivity() {
     private val PROGRESS_EVENT_CHANNEL = "com.rvbhati.rvdownloader/progress_events"
 
     private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private var isEngineInitialized = false
     private var pendingSharedText: String? = null
 
     private var eventSink: EventChannel.EventSink? = null
@@ -43,7 +42,8 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
-        initYoutubeDLEngineInBackground()
+        // Ensure initialized synchronously / in background if App.onCreate had delay
+        ensureEngineReady(applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -63,15 +63,25 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun initYoutubeDLEngineInBackground() {
-        activityScope.launch(Dispatchers.IO) {
+    @Synchronized
+    private fun ensureEngineReady(context: Context) {
+        if (!App.isYtDlpReady) {
             try {
-                YoutubeDL.getInstance().init(applicationContext)
-                FFmpeg.getInstance().init(applicationContext)
-                isEngineInitialized = true
-                Log.d("RVDownloader", "YoutubeDL & FFmpeg initialized successfully.")
+                YoutubeDL.getInstance().init(context.applicationContext)
+                App.isYtDlpReady = true
+                Log.d("RVDownloader", "YoutubeDL initialized via ensureEngineReady")
             } catch (e: Throwable) {
-                Log.e("RVDownloader", "Failed to initialize YoutubeDL / FFmpeg: ${e.message}", e)
+                App.initErrorMessage = e.localizedMessage ?: e.message
+                Log.e("RVDownloader", "Failed to init YoutubeDL in ensureEngineReady: ${e.message}")
+            }
+        }
+        if (!App.isFFmpegReady) {
+            try {
+                FFmpeg.getInstance().init(context.applicationContext)
+                App.isFFmpegReady = true
+                Log.d("RVDownloader", "FFmpeg initialized via ensureEngineReady")
+            } catch (e: Throwable) {
+                Log.w("RVDownloader", "Failed to init FFmpeg in ensureEngineReady: ${e.message}")
             }
         }
     }
@@ -97,23 +107,19 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "initEngine" -> {
                         activityScope.launch(Dispatchers.IO) {
-                            try {
-                                if (!isEngineInitialized) {
-                                    YoutubeDL.getInstance().init(applicationContext)
-                                    FFmpeg.getInstance().init(applicationContext)
-                                    isEngineInitialized = true
-                                }
+                            ensureEngineReady(applicationContext)
+                            if (App.isYtDlpReady) {
                                 val ver = try {
-                                    YoutubeDL.getInstance().version(applicationContext) ?: "Unknown"
+                                    YoutubeDL.getInstance().version(applicationContext) ?: "yt-dlp Core"
                                 } catch (_: Throwable) {
                                     "yt-dlp Core"
                                 }
                                 withContext(Dispatchers.Main) {
                                     result.success(mapOf("success" to true, "version" to ver))
                                 }
-                            } catch (e: Throwable) {
+                            } else {
                                 withContext(Dispatchers.Main) {
-                                    result.error("INIT_ERROR", e.localizedMessage, null)
+                                    result.error("INIT_ERROR", App.initErrorMessage ?: "Failed to initialize yt-dlp native environment", null)
                                 }
                             }
                         }
@@ -121,8 +127,9 @@ class MainActivity : FlutterActivity() {
 
                     "getEngineVersion" -> {
                         activityScope.launch(Dispatchers.IO) {
+                            ensureEngineReady(applicationContext)
                             try {
-                                val ver = YoutubeDL.getInstance().version(applicationContext) ?: "Unknown"
+                                val ver = YoutubeDL.getInstance().version(applicationContext) ?: "yt-dlp Embedded"
                                 withContext(Dispatchers.Main) {
                                     result.success(ver)
                                 }
@@ -136,6 +143,13 @@ class MainActivity : FlutterActivity() {
 
                     "updateEngine" -> {
                         activityScope.launch(Dispatchers.IO) {
+                            ensureEngineReady(applicationContext)
+                            if (!App.isYtDlpReady) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("UPDATE_FAILED", App.initErrorMessage ?: "Engine not initialized", null)
+                                }
+                                return@launch
+                            }
                             try {
                                 val updateStatus = YoutubeDL.getInstance().updateYoutubeDL(
                                     applicationContext,
@@ -152,7 +166,7 @@ class MainActivity : FlutterActivity() {
                                 }
                             } catch (e: Throwable) {
                                 withContext(Dispatchers.Main) {
-                                    result.error("UPDATE_FAILED", e.localizedMessage, null)
+                                    result.error("UPDATE_FAILED", e.localizedMessage ?: "Failed to update yt-dlp", null)
                                 }
                             }
                         }
@@ -172,6 +186,13 @@ class MainActivity : FlutterActivity() {
                         }
 
                         activityScope.launch(Dispatchers.IO) {
+                            ensureEngineReady(applicationContext)
+                            if (!App.isYtDlpReady) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("FETCH_INFO_ERROR", App.initErrorMessage ?: "yt-dlp engine is not initialized yet", null)
+                                }
+                                return@launch
+                            }
                             try {
                                 val request = YoutubeDLRequest(url)
                                 request.addOption("--no-playlist")
@@ -236,6 +257,17 @@ class MainActivity : FlutterActivity() {
                         result.success(taskId)
 
                         activityScope.launch(Dispatchers.IO) {
+                            ensureEngineReady(applicationContext)
+                            if (!App.isYtDlpReady) {
+                                activeTasks.remove(taskId)
+                                sendProgressEvent(mapOf(
+                                    "taskId" to taskId,
+                                    "status" to "failed",
+                                    "error" to (App.initErrorMessage ?: "Engine not ready"),
+                                    "line" to "Engine initialization failed"
+                                ))
+                                return@launch
+                            }
                             try {
                                 val outDir = File(targetDir)
                                 if (!outDir.exists()) {

@@ -13,7 +13,7 @@
 
     <application
         android:label="RV Downloader"
-        android:name="${applicationName}"
+        android:name=".App"
         android:icon="@mipmap/ic_launcher"
         android:extractNativeLibs="true"
         android:requestLegacyExternalStorage="true"
