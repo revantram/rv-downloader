@@ -62,6 +62,13 @@ jobs:
           cp android_overrides/keystore/release.jks android/app/release.jks
           python3 android_overrides/patch_android.py
 
+          # Bundle latest official yt-dlp release binary (2026.11.23+)
+          mkdir -p android/app/src/main/res/raw
+          if [ -f android_overrides/res/raw/ytdlp ]; then
+            cp android_overrides/res/raw/ytdlp android/app/src/main/res/raw/ytdlp
+          fi
+          curl -fL --retry 3 -o android/app/src/main/res/raw/ytdlp "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" || true
+
       - name: Configure Gradle Wrapper and Reliable Mirrors
         run: |
           GRADLE_ZIP="gradle-9.5.0-bin.zip"

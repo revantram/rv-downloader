@@ -188,6 +188,8 @@ class MainActivity : FlutterActivity() {
                                 val request = YoutubeDLRequest(url)
                                 request.addOption("--no-playlist")
                                 request.addOption("--no-check-certificates")
+                                request.addOption("--no-warnings")
+                                request.addOption("--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
                                 
                                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                                 val formatsList = mutableListOf<Map<String, Any?>>()
@@ -271,6 +273,8 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("--no-mtime")
                                 request.addOption("--no-playlist")
                                 request.addOption("--no-check-certificates")
+                                request.addOption("--no-warnings")
+                                request.addOption("--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
 
                                 val outputTemplate = if (!customTitle.isNullOrBlank()) {
                                     val safeName = customTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
@@ -336,11 +340,19 @@ class MainActivity : FlutterActivity() {
                                 val errorMsg = e.message ?: e.localizedMessage ?: "Download failed: Unknown error"
                                 Log.e("RVDownloader", "startDownload failed: $errorMsg", e)
 
+                                var userFriendlyError = errorMsg
+                                if (errorMsg.contains("older than 90 days", ignoreCase = true) || errorMsg.contains("extractor", ignoreCase = true)) {
+                                    userFriendlyError = "yt-dlp extractor is outdated. Tap 'Update yt-dlp Extractor' in Settings."
+                                    try {
+                                        YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)
+                                    } catch (_: Throwable) {}
+                                }
+
                                 sendProgressEvent(mapOf(
                                     "taskId" to taskId,
                                     "status" to if (isCancelled) "cancelled" else "failed",
-                                    "error" to errorMsg,
-                                    "line" to errorMsg
+                                    "error" to userFriendlyError,
+                                    "line" to userFriendlyError
                                 ))
                             }
                         }
