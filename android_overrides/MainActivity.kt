@@ -145,7 +145,7 @@ class MainActivity : FlutterActivity() {
                                 withContext(Dispatchers.Main) {
                                     result.success(
                                         mapOf(
-                                            "status" to updateStatus.name,
+                                            "status" to (updateStatus?.name ?: "DONE"),
                                             "version" to newVer
                                         )
                                     )
