@@ -23,11 +23,21 @@ class UrlDetector {
   }
 
   /// Identifies the platform of the given URL
+  static bool isTeraBox(String url) {
+    return identifyPlatform(url) == SupportedPlatform.terabox;
+  }
+
   static SupportedPlatform identifyPlatform(String url) {
     final lower = url.toLowerCase();
     if (lower.contains('terabox') ||
         lower.contains('1024tera') ||
         lower.contains('teraboxapp') ||
+        lower.contains('teraboxlink') ||
+        lower.contains('terasharelink') ||
+        lower.contains('terasharefile') ||
+        lower.contains('nephobox') ||
+        lower.contains('freeterabox') ||
+        lower.contains('momerybox') ||
         lower.contains('4funbox') ||
         lower.contains('mirrobox')) {
       return SupportedPlatform.terabox;

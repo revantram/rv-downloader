@@ -217,6 +217,47 @@ class DownloadTaskCard extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
+                if (task.url.contains('terabox') ||
+                    task.url.contains('1024tera') ||
+                    task.error.contains('Browser') ||
+                    task.error.contains('Unsupported URL')) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InkWell(
+                      onTap: () {
+                        NativeDownloaderService.instance.openUrl(task.url);
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.open_in_browser_rounded, size: 14, color: Color(0xFF38BDF8)),
+                            SizedBox(width: 6),
+                            Text(
+                              'Open in Browser / TeraBox',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF38BDF8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
 
               // File size on completion

@@ -12,6 +12,7 @@ class SettingsService extends ChangeNotifier {
   static const String _keyNotifyDone = 'notify_on_complete';
   static const String _keyYtDlpVersion = 'cached_ytdlp_version';
   static const String _keyIsDarkTheme = 'is_dark_theme';
+  static const String _keyTeraboxCookie = 'terabox_cookie';
 
   String _defaultQuality = '1080p';
   String _defaultBitrate = '320k';
@@ -20,6 +21,7 @@ class SettingsService extends ChangeNotifier {
   bool _notifyOnComplete = true;
   String _cachedYtDlpVersion = 'yt-dlp Engine';
   bool _isDarkTheme = true;
+  String _teraboxCookie = '';
 
   String get defaultQuality => _defaultQuality;
   String get defaultBitrate => _defaultBitrate;
@@ -28,6 +30,7 @@ class SettingsService extends ChangeNotifier {
   bool get notifyOnComplete => _notifyOnComplete;
   String get cachedYtDlpVersion => _cachedYtDlpVersion;
   bool get isDarkTheme => _isDarkTheme;
+  String get teraboxCookie => _teraboxCookie;
 
   // Theme Dynamic Palette
   Color get backgroundColor => _isDarkTheme ? Colors.black : const Color(0xFFF8FAFC);
@@ -53,6 +56,14 @@ class SettingsService extends ChangeNotifier {
     _notifyOnComplete = prefs.getBool(_keyNotifyDone) ?? true;
     _cachedYtDlpVersion = prefs.getString(_keyYtDlpVersion) ?? 'yt-dlp Engine';
     _isDarkTheme = prefs.getBool(_keyIsDarkTheme) ?? true;
+    _teraboxCookie = prefs.getString(_keyTeraboxCookie) ?? '';
+    notifyListeners();
+  }
+
+  Future<void> setTeraboxCookie(String cookie) async {
+    _teraboxCookie = cookie.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyTeraboxCookie, _teraboxCookie);
     notifyListeners();
   }
 

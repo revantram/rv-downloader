@@ -16,16 +16,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _pathController = TextEditingController();
+  final TextEditingController _teraboxCookieController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _pathController.text = SettingsService.instance.downloadPath;
+    _teraboxCookieController.text = SettingsService.instance.teraboxCookie;
   }
 
   @override
   void dispose() {
     _pathController.dispose();
+    _teraboxCookieController.dispose();
     super.dispose();
   }
 
@@ -331,6 +334,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // TeraBox Configuration Section
+                _buildSectionHeader('TERABOX & CLOUD ACCELERATION', settings.secondaryTextColor),
+                const SizedBox(height: 8),
+                LiquidGlassCard(
+                  padding: const EdgeInsets.all(16),
+                  borderRadius: 20,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TeraBox Cookie (ndus) - Optional',
+                        style: TextStyle(
+                          color: settings.primaryTextColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'सुरक्षित या निजी TeraBox लिंक को 100% हाई स्पीड पर डाउनलोड करने के लिए अपना ndus कुकी दर्ज करें। (सार्वजनिक लिंक स्वतः हल हो जाते हैं)',
+                        style: TextStyle(
+                          color: settings.secondaryTextColor,
+                          fontSize: 11,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: settings.textFieldBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: settings.textFieldBorder,
+                            width: 0.8,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _teraboxCookieController,
+                          style: TextStyle(color: settings.primaryTextColor, fontSize: 13),
+                          onChanged: (val) => settings.setTeraboxCookie(val.trim()),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'उदा. YTY4MzI4OG... (ndus cookie)',
+                            hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 // Privacy & Personal Note
                 _buildSectionHeader('APPLICATION INFO', settings.secondaryTextColor),
                 const SizedBox(height: 8),
@@ -359,7 +415,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Version 1.0.9+10 • Architecture ARM64-v8a',
+                        'Version 1.0.10+11 • Architecture ARM64-v8a',
                         style: TextStyle(
                           color: settings.subtleTextColor,
                           fontSize: 10,

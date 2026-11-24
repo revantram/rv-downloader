@@ -410,7 +410,11 @@ class MainActivity : FlutterActivity() {
                                 Log.e("RVDownloader", "startDownload failed: $errorMsg", e)
 
                                 var userFriendlyError = errorMsg
-                                if (errorMsg.contains("older than 90 days", ignoreCase = true) || errorMsg.contains("extractor", ignoreCase = true)) {
+                                if (errorMsg.contains("Unsupported URL", ignoreCase = true) && (url.contains("terabox") || url.contains("1024tera"))) {
+                                    userFriendlyError = "TeraBox verification required. Tap 'Open in Browser' to view or download directly."
+                                } else if (errorMsg.contains("Unsupported URL", ignoreCase = true)) {
+                                    userFriendlyError = "Unsupported URL: Please check the link or open directly in browser."
+                                } else if (errorMsg.contains("older than 90 days", ignoreCase = true) || errorMsg.contains("extractor", ignoreCase = true)) {
                                     userFriendlyError = "yt-dlp extractor is outdated. Tap 'Update yt-dlp Extractor' in Settings."
                                     try {
                                         YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.STABLE)

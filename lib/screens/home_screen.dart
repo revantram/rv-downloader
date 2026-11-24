@@ -5,6 +5,7 @@ import '../models/download_task.dart';
 import '../models/media_info.dart';
 import '../services/native_downloader_service.dart';
 import '../services/settings_service.dart';
+import '../services/terabox_service.dart';
 import '../utils/url_detector.dart';
 import '../widgets/download_task_card.dart';
 import '../widgets/format_selector_sheet.dart';
@@ -110,6 +111,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     setState(() => _isFetching = true);
 
+    // If TeraBox link, resolve direct download URL
+    if (UrlDetector.isTeraBox(url)) {
+      try {
+        final teraRes = await TeraBoxService.instance.resolve(url);
+        if (!mounted) return;
+        if (teraRes.success && teraRes.primaryFile != null) {
+          final f = teraRes.primaryFile!;
+          _openFormatSelector(
+            MediaInfo(
+              id: 'terabox_${DateTime.now().millisecondsSinceEpoch}',
+              title: f.title,
+              duration: Duration.zero,
+              thumbnail: f.thumbnail ?? '',
+              uploader: 'TeraBox Cloud',
+              webpageUrl: f.downloadUrl,
+              description: f.sizeFormatted ?? '',
+              formats: [
+                FormatOption(
+                  formatId: 'original',
+                  formatNote: f.sizeFormatted != null
+                      ? 'Original File (${f.sizeFormatted})'
+                      : 'Original File (Direct Stream)',
+                  ext: f.title.contains('.') ? f.title.split('.').last : 'mp4',
+                  vcodec: 'h264',
+                  acodec: 'aac',
+                  filesize: f.sizeBytes ?? 0,
+                  fps: 30,
+                  height: 1080,
+                  width: 1920,
+                  tbr: 0,
+                ),
+              ],
+            ),
+          );
+          return;
+        } else {
+          _showTeraBoxNoticeDialog(url, teraRes.errorMessage);
+          return;
+        }
+      } catch (e) {
+        if (!mounted) return;
+        _showTeraBoxNoticeDialog(url, e.toString());
+        return;
+      } finally {
+        if (mounted) setState(() => _isFetching = false);
+      }
+    }
+
     try {
       final info = await NativeDownloaderService.instance.fetchMediaInfo(url);
       if (!mounted) return;
@@ -157,6 +206,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final plat = UrlDetector.identifyPlatform(url);
     final platName = UrlDetector.getPlatformName(plat);
 
+    // If TeraBox link, check resolution before starting
+    if (UrlDetector.isTeraBox(url)) {
+      setState(() => _isFetching = true);
+      try {
+        final teraRes = await TeraBoxService.instance.resolve(url);
+        if (!mounted) return;
+        if (teraRes.success && teraRes.primaryFile != null) {
+          final f = teraRes.primaryFile!;
+          await NativeDownloaderService.instance.startDownload(
+            url: f.downloadUrl,
+            title: f.title,
+            thumbnail: f.thumbnail ?? '',
+            quality: quality,
+            isAudioOnly: isAudio,
+            audioBitrate: bitrate,
+          );
+          _urlController.clear();
+          _showToast('Download started in background');
+          return;
+        } else {
+          _showTeraBoxNoticeDialog(url, teraRes.errorMessage);
+          return;
+        }
+      } catch (e) {
+        if (!mounted) return;
+        _showTeraBoxNoticeDialog(url, e.toString());
+        return;
+      } finally {
+        if (mounted) setState(() => _isFetching = false);
+      }
+    }
+
     await NativeDownloaderService.instance.startDownload(
       url: url,
       title: '$platName Media',
@@ -167,6 +248,99 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _urlController.clear();
     _showToast('Download started in background');
+  }
+
+  void _showTeraBoxNoticeDialog(String url, String? message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF131824),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 0.8,
+          ),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.cloud_download_rounded, color: Color(0xFF38BDF8), size: 26),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'TeraBox सुरक्षा सूचना',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'TeraBox Cloudflare सुरक्षा या लॉगिन सत्यापन की आवश्यकता है। TeraBox सर्वर सीधे ऑटोमेशन को सुरक्षित कोड/कैप्चा से रोक रहा है।',
+              style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.open_in_browser_rounded, color: Color(0xFF38BDF8), size: 22),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '👉 नीचे "Open in Browser" बटन दबाएं और लिंक को सीधे अपने ब्राउज़र या TeraBox ऐप में 1-टैप में खोलकर देखें या डाउनलोड करें।',
+                      style: TextStyle(color: Color(0xFFE2E8F0), fontSize: 12, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Clipboard.setData(ClipboardData(text: url));
+              _showToast('TeraBox लिंक कॉपी हो गया');
+            },
+            child: const Text('लिंक कॉपी करें', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            icon: const Icon(Icons.open_in_browser_rounded, color: Colors.white, size: 18),
+            label: const Text(
+              'Open in Browser',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              NativeDownloaderService.instance.openUrl(url);
+              _showToast('ब्राउज़र में खोला जा रहा है...');
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   void _openFormatSelector(MediaInfo info) {

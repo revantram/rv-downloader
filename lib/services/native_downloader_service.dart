@@ -8,7 +8,9 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/download_task.dart';
 import '../models/media_info.dart';
+import '../utils/url_detector.dart';
 import 'settings_service.dart';
+import 'terabox_service.dart';
 
 class NativeDownloaderService extends ChangeNotifier {
   static final NativeDownloaderService instance = NativeDownloaderService._();
@@ -127,6 +129,43 @@ class NativeDownloaderService extends ChangeNotifier {
   }
 
   Future<MediaInfo?> fetchMediaInfo(String url) async {
+    // If TeraBox link, try resolving direct download URL first
+    if (UrlDetector.isTeraBox(url)) {
+      try {
+        final teraRes = await TeraBoxService.instance.resolve(url);
+        if (teraRes.success && teraRes.primaryFile != null) {
+          final f = teraRes.primaryFile!;
+          return MediaInfo(
+            id: 'terabox_${DateTime.now().millisecondsSinceEpoch}',
+            title: f.title,
+            duration: Duration.zero,
+            thumbnail: f.thumbnail ?? '',
+            uploader: 'TeraBox Cloud',
+            webpageUrl: f.downloadUrl,
+            description: f.sizeFormatted ?? '',
+            formats: [
+              FormatOption(
+                formatId: 'original',
+                formatNote: f.sizeFormatted != null
+                    ? 'Original File (${f.sizeFormatted})'
+                    : 'Original File (Direct Stream)',
+                ext: f.title.contains('.') ? f.title.split('.').last : 'mp4',
+                vcodec: 'h264',
+                acodec: 'aac',
+                filesize: f.sizeBytes ?? 0,
+                fps: 30,
+                height: 1080,
+                width: 1920,
+                tbr: 0,
+              ),
+            ],
+          );
+        }
+      } catch (e) {
+        debugPrint('TeraBox info resolution error: $e');
+      }
+    }
+
     try {
       final res = await _methodChannel.invokeMethod('fetchInfo', {'url': url});
       if (res is Map) {
@@ -150,11 +189,47 @@ class NativeDownloaderService extends ChangeNotifier {
     final taskId = DateTime.now().millisecondsSinceEpoch.toString();
     final targetDir = SettingsService.instance.downloadPath;
 
+    String downloadUrl = url;
+    String downloadTitle = customTitle?.trim().isNotEmpty == true ? customTitle!.trim() : title;
+    String downloadThumbnail = thumbnail;
+
+    // Check if this is an unextracted TeraBox sharing link
+    if (UrlDetector.isTeraBox(url) && !url.contains('d.terabox') && !url.contains('/file/')) {
+      final teraRes = await TeraBoxService.instance.resolve(url);
+      if (teraRes.success && teraRes.primaryFile != null) {
+        final f = teraRes.primaryFile!;
+        downloadUrl = f.downloadUrl;
+        if (downloadTitle.contains('TeraBox') || downloadTitle == 'Online Media') {
+          downloadTitle = f.title;
+        }
+        if (downloadThumbnail.isEmpty && f.thumbnail != null) {
+          downloadThumbnail = f.thumbnail!;
+        }
+      } else {
+        // Verification challenge or unresolvable automatically
+        final task = DownloadTask(
+          id: taskId,
+          url: url,
+          title: downloadTitle,
+          thumbnail: downloadThumbnail,
+          quality: quality,
+          isAudioOnly: isAudioOnly,
+          audioBitrate: audioBitrate,
+          status: DownloadStatus.failed,
+          error: "TeraBox security verification required. Tap 'Open in Browser' to view or download directly.",
+        );
+        _tasks.insert(0, task);
+        notifyListeners();
+        await _saveHistoryToDisk();
+        return taskId;
+      }
+    }
+
     final task = DownloadTask(
       id: taskId,
-      url: url,
-      title: customTitle?.trim().isNotEmpty == true ? customTitle!.trim() : title,
-      thumbnail: thumbnail,
+      url: downloadUrl,
+      title: downloadTitle,
+      thumbnail: downloadThumbnail,
       quality: quality,
       isAudioOnly: isAudioOnly,
       audioBitrate: audioBitrate,
@@ -168,7 +243,7 @@ class NativeDownloaderService extends ChangeNotifier {
     try {
       await _methodChannel.invokeMethod('startDownload', {
         'taskId': taskId,
-        'url': url,
+        'url': downloadUrl,
         'quality': quality,
         'isAudioOnly': isAudioOnly,
         'audioBitrate': audioBitrate,
