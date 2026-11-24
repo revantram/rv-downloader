@@ -1,5 +1,5 @@
-name: liquid_dl
-description: "LiquidDL - Standalone Personal Media Downloader powered by yt-dlp & FFmpeg"
+name: rv_downloader
+description: "RV Downloader - Personal Media Downloader powered by yt-dlp & FFmpeg"
 publish_to: "none"
 version: 1.0.0+1
 

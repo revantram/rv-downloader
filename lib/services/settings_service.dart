@@ -14,7 +14,7 @@ class SettingsService extends ChangeNotifier {
 
   String _defaultQuality = '1080p';
   String _defaultBitrate = '320k';
-  String _downloadPath = '/storage/emulated/0/Download/LiquidDL';
+  String _downloadPath = '/storage/emulated/0/Download/RV-Downloader';
   bool _autoPasteClipboard = true;
   bool _notifyOnComplete = true;
   String _cachedYtDlpVersion = 'yt-dlp Engine';
@@ -30,7 +30,7 @@ class SettingsService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _defaultQuality = prefs.getString(_keyDefaultQuality) ?? '1080p';
     _defaultBitrate = prefs.getString(_keyDefaultBitrate) ?? '320k';
-    _downloadPath = prefs.getString(_keyDownloadPath) ?? '/storage/emulated/0/Download/LiquidDL';
+    _downloadPath = prefs.getString(_keyDownloadPath) ?? '/storage/emulated/0/Download/RV-Downloader';
     _autoPasteClipboard = prefs.getBool(_keyAutoPaste) ?? true;
     _notifyOnComplete = prefs.getBool(_keyNotifyDone) ?? true;
     _cachedYtDlpVersion = prefs.getString(_keyYtDlpVersion) ?? 'yt-dlp Engine';

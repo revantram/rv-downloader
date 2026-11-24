@@ -323,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'LiquidDL Personal Media Downloader',
+                    'RV Downloader - Personal Media Downloader',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,

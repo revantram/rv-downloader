@@ -15,9 +15,9 @@ class NativeDownloaderService extends ChangeNotifier {
   NativeDownloaderService._();
 
   static const MethodChannel _methodChannel =
-      MethodChannel('com.rvbhati.liquiddl/engine');
+      MethodChannel('com.rvbhati.rvdownloader/engine');
   static const EventChannel _eventChannel =
-      EventChannel('com.rvbhati.liquiddl/progress_events');
+      EventChannel('com.rvbhati.rvdownloader/progress_events');
 
   final List<DownloadTask> _tasks = [];
   StreamSubscription? _eventSubscription;
@@ -85,7 +85,6 @@ class NativeDownloaderService extends ChangeNotifier {
     task.progress = progress.clamp(0.0, 100.0);
     task.etaSeconds = eta;
 
-    // Parse speed from yt-dlp log line e.g. "at 4.52MiB/s"
     final speedMatch = RegExp(r'at\s+([0-9.]+[KMG]?i?B/s)', caseSensitive: false)
         .firstMatch(line);
     if (speedMatch != null) {
@@ -270,7 +269,7 @@ class NativeDownloaderService extends ChangeNotifier {
 
   Future<File> _getHistoryFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/download_tasks_v1.json');
+    return File('${dir.path}/rv_downloader_tasks_v1.json');
   }
 
   Future<void> _loadHistoryFromDisk() async {

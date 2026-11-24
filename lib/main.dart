@@ -25,16 +25,16 @@ void main() async {
   await SettingsService.instance.init();
   await NativeDownloaderService.instance.init();
 
-  runApp(const LiquidDLApp());
+  runApp(const RVDownloaderApp());
 }
 
-class LiquidDLApp extends StatelessWidget {
-  const LiquidDLApp({super.key});
+class RVDownloaderApp extends StatelessWidget {
+  const RVDownloaderApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LiquidDL',
+      title: 'RV Downloader',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

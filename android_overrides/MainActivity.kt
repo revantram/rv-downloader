@@ -1,4 +1,4 @@
-package com.rvbhati.liquiddl
+package com.rvbhati.rvdownloader
 
 import android.content.Context
 import android.content.Intent
@@ -30,8 +30,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : FlutterActivity() {
 
-    private val CHANNEL_NAME = "com.rvbhati.liquiddl/engine"
-    private val PROGRESS_EVENT_CHANNEL = "com.rvbhati.liquiddl/progress_events"
+    private val CHANNEL_NAME = "com.rvbhati.rvdownloader/engine"
+    private val PROGRESS_EVENT_CHANNEL = "com.rvbhati.rvdownloader/progress_events"
 
     private val activityScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var isEngineInitialized = false
@@ -69,9 +69,9 @@ class MainActivity : FlutterActivity() {
                 YoutubeDL.getInstance().init(applicationContext)
                 FFmpeg.getInstance().init(applicationContext)
                 isEngineInitialized = true
-                Log.d("LiquidDL", "YoutubeDL & FFmpeg initialized successfully.")
+                Log.d("RVDownloader", "YoutubeDL & FFmpeg initialized successfully.")
             } catch (e: Throwable) {
-                Log.e("LiquidDL", "Failed to initialize YoutubeDL / FFmpeg: ${e.message}", e)
+                Log.e("RVDownloader", "Failed to initialize YoutubeDL / FFmpeg: ${e.message}", e)
             }
         }
     }
@@ -221,7 +221,7 @@ class MainActivity : FlutterActivity() {
                     "startDownload" -> {
                         val taskId = call.argument<String>("taskId") ?: System.currentTimeMillis().toString()
                         val url = call.argument<String>("url") ?: ""
-                        val quality = call.argument<String>("quality") ?: "best" // best, 1080p, 720p, 480p, 360p, audio_mp3
+                        val quality = call.argument<String>("quality") ?: "best"
                         val isAudioOnly = call.argument<Boolean>("isAudioOnly") ?: false
                         val audioBitrate = call.argument<String>("audioBitrate") ?: "320k"
                         val customTitle = call.argument<String>("customTitle")
@@ -247,7 +247,6 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("--no-playlist")
                                 request.addOption("--no-check-certificates")
 
-                                // File naming template
                                 val outputTemplate = if (!customTitle.isNullOrBlank()) {
                                     val safeName = customTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                                     "${outDir.absolutePath}/$safeName.%(ext)s"
@@ -257,14 +256,12 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("-o", outputTemplate)
 
                                 if (isAudioOnly) {
-                                    // Extract Audio and encode to MP3
                                     request.addOption("-x")
                                     request.addOption("--audio-format", "mp3")
                                     request.addOption("--audio-quality", audioBitrate)
                                     request.addOption("--embed-thumbnail")
                                     request.addOption("--add-metadata")
                                 } else {
-                                    // Video format selection
                                     when (quality.lowercase()) {
                                         "1080p" -> request.addOption("-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best")
                                         "720p" -> request.addOption("-f", "bestvideo[height<=720]+bestaudio/best[height<=720]/best")
@@ -297,7 +294,6 @@ class MainActivity : FlutterActivity() {
 
                                 activeTasks.remove(taskId)
 
-                                // Find resulting file to trigger media scan
                                 val downloadedFile = scanAndFindNewestFile(outDir)
                                 if (downloadedFile != null && downloadedFile.exists()) {
                                     scanMediaFile(downloadedFile.absolutePath)
@@ -392,7 +388,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun getPublicDownloadDir(): String {
-        val publicDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "LiquidDL")
+        val publicDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "RV-Downloader")
         if (!publicDir.exists()) {
             publicDir.mkdirs()
         }
@@ -416,10 +412,10 @@ class MainActivity : FlutterActivity() {
                 arrayOf(filePath),
                 null
             ) { path, uri ->
-                Log.d("LiquidDL", "Scanned media: $path -> $uri")
+                Log.d("RVDownloader", "Scanned media: $path -> $uri")
             }
         } catch (e: Throwable) {
-            Log.e("LiquidDL", "Media scan failed: ${e.message}")
+            Log.e("RVDownloader", "Media scan failed: ${e.message}")
         }
     }
 
@@ -446,7 +442,7 @@ class MainActivity : FlutterActivity() {
             startActivity(intent)
             true
         } catch (e: Throwable) {
-            Log.e("LiquidDL", "Failed to open file: ${e.message}")
+            Log.e("RVDownloader", "Failed to open file: ${e.message}")
             false
         }
     }
@@ -474,7 +470,7 @@ class MainActivity : FlutterActivity() {
             startActivity(Intent.createChooser(intent, "Share Media"))
             true
         } catch (e: Throwable) {
-            Log.e("LiquidDL", "Failed to share file: ${e.message}")
+            Log.e("RVDownloader", "Failed to share file: ${e.message}")
             false
         }
     }

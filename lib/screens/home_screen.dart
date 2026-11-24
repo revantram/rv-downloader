@@ -305,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             Row(
                               children: [
                                 const Text(
-                                  'Liquid',
+                                  'RV ',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 26,
@@ -314,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   ),
                                 ),
                                 Text(
-                                  'DL',
+                                  'Downloader',
                                   style: TextStyle(
                                     color: const Color(0xFF38BDF8),
                                     fontSize: 26,
@@ -326,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Personal yt-dlp & FFmpeg Downloader',
+                              'Personal Media Downloader powered by yt-dlp',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.45),
                                 fontSize: 12,
