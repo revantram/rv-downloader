@@ -10,7 +10,6 @@ import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.annotation.NonNull
 import androidx.core.content.FileProvider
-import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -42,7 +41,6 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
-        // Ensure initialized synchronously / in background if App.onCreate had delay
         ensureEngineReady(applicationContext)
     }
 
@@ -71,17 +69,8 @@ class MainActivity : FlutterActivity() {
                 App.isYtDlpReady = true
                 Log.d("RVDownloader", "YoutubeDL initialized via ensureEngineReady")
             } catch (e: Throwable) {
-                App.initErrorMessage = e.localizedMessage ?: e.message
-                Log.e("RVDownloader", "Failed to init YoutubeDL in ensureEngineReady: ${e.message}")
-            }
-        }
-        if (!App.isFFmpegReady) {
-            try {
-                FFmpeg.getInstance().init(context.applicationContext)
-                App.isFFmpegReady = true
-                Log.d("RVDownloader", "FFmpeg initialized via ensureEngineReady")
-            } catch (e: Throwable) {
-                Log.w("RVDownloader", "Failed to init FFmpeg in ensureEngineReady: ${e.message}")
+                App.initErrorMessage = e.message ?: e.localizedMessage
+                Log.e("RVDownloader", "Failed to init YoutubeDL in ensureEngineReady: ${e.message}", e)
             }
         }
     }
@@ -165,8 +154,10 @@ class MainActivity : FlutterActivity() {
                                     )
                                 }
                             } catch (e: Throwable) {
+                                val errorMsg = e.message ?: e.localizedMessage ?: "Failed to update yt-dlp: Network timeout or rate limit"
+                                Log.e("RVDownloader", "updateEngine error: $errorMsg", e)
                                 withContext(Dispatchers.Main) {
-                                    result.error("UPDATE_FAILED", e.localizedMessage ?: "Failed to update yt-dlp", null)
+                                    result.error("UPDATE_FAILED", errorMsg, Log.getStackTraceString(e))
                                 }
                             }
                         }
@@ -189,7 +180,7 @@ class MainActivity : FlutterActivity() {
                             ensureEngineReady(applicationContext)
                             if (!App.isYtDlpReady) {
                                 withContext(Dispatchers.Main) {
-                                    result.error("FETCH_INFO_ERROR", App.initErrorMessage ?: "yt-dlp engine is not initialized yet", null)
+                                    result.error("FETCH_INFO_ERROR", App.initErrorMessage ?: "yt-dlp engine is not initialized yet. Please restart the app.", null)
                                 }
                                 return@launch
                             }
@@ -232,8 +223,10 @@ class MainActivity : FlutterActivity() {
                                     result.success(resultMap)
                                 }
                             } catch (e: Throwable) {
+                                val errorMsg = e.message ?: e.localizedMessage ?: "Failed to fetch media info from URL"
+                                Log.e("RVDownloader", "fetchInfo error: $errorMsg", e)
                                 withContext(Dispatchers.Main) {
-                                    result.error("FETCH_INFO_ERROR", e.localizedMessage ?: "Failed to fetch media info", null)
+                                    result.error("FETCH_INFO_ERROR", errorMsg, Log.getStackTraceString(e))
                                 }
                             }
                         }
@@ -244,7 +237,6 @@ class MainActivity : FlutterActivity() {
                         val url = call.argument<String>("url") ?: ""
                         val quality = call.argument<String>("quality") ?: "best"
                         val isAudioOnly = call.argument<Boolean>("isAudioOnly") ?: false
-                        val audioBitrate = call.argument<String>("audioBitrate") ?: "320k"
                         val customTitle = call.argument<String>("customTitle")
                         val targetDir = call.argument<String>("targetDir") ?: getPublicDownloadDir()
 
@@ -260,11 +252,12 @@ class MainActivity : FlutterActivity() {
                             ensureEngineReady(applicationContext)
                             if (!App.isYtDlpReady) {
                                 activeTasks.remove(taskId)
+                                val msg = App.initErrorMessage ?: "yt-dlp engine is not ready. Please restart the app."
                                 sendProgressEvent(mapOf(
                                     "taskId" to taskId,
                                     "status" to "failed",
-                                    "error" to (App.initErrorMessage ?: "Engine not ready"),
-                                    "line" to "Engine initialization failed"
+                                    "error" to msg,
+                                    "line" to msg
                                 ))
                                 return@launch
                             }
@@ -288,22 +281,17 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("-o", outputTemplate)
 
                                 if (isAudioOnly) {
-                                    request.addOption("-x")
-                                    request.addOption("--audio-format", "mp3")
-                                    request.addOption("--audio-quality", audioBitrate)
-                                    request.addOption("--embed-thumbnail")
-                                    request.addOption("--add-metadata")
+                                    // Direct native high quality audio stream (m4a, mp3, aac, opus)
+                                    request.addOption("-f", "bestaudio/best")
                                 } else {
+                                    // Direct progressive MP4 stream (Instagram, TeraBox, TikTok, YouTube 720p/360p)
                                     when (quality.lowercase()) {
-                                        "1080p" -> request.addOption("-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best")
-                                        "720p" -> request.addOption("-f", "bestvideo[height<=720]+bestaudio/best[height<=720]/best")
-                                        "480p" -> request.addOption("-f", "bestvideo[height<=480]+bestaudio/best[height<=480]/best")
-                                        "360p" -> request.addOption("-f", "bestvideo[height<=360]+bestaudio/best[height<=360]/best")
-                                        else -> request.addOption("-f", "bestvideo+bestaudio/best")
+                                        "1080p" -> request.addOption("-f", "best[height<=1080][ext=mp4]/best[height<=1080]/bestvideo[height<=1080]+bestaudio/best")
+                                        "720p" -> request.addOption("-f", "best[height<=720][ext=mp4]/best[height<=720]/best")
+                                        "480p" -> request.addOption("-f", "best[height<=480][ext=mp4]/best[height<=480]/best")
+                                        "360p" -> request.addOption("-f", "best[height<=360][ext=mp4]/best[height<=360]/best")
+                                        else -> request.addOption("-f", "best[ext=mp4]/best")
                                     }
-                                    request.addOption("--merge-output-format", "mp4")
-                                    request.addOption("--embed-thumbnail")
-                                    request.addOption("--add-metadata")
                                 }
 
                                 sendProgressEvent(mapOf(
@@ -341,15 +329,18 @@ class MainActivity : FlutterActivity() {
 
                             } catch (e: Throwable) {
                                 activeTasks.remove(taskId)
-                                val isCancelled = e.localizedMessage?.contains("destroy", ignoreCase = true) == true
-                                        || e.localizedMessage?.contains("cancel", ignoreCase = true) == true
-                                        || e.localizedMessage?.contains("interrupted", ignoreCase = true) == true
+                                val isCancelled = e.message?.contains("destroy", ignoreCase = true) == true
+                                        || e.message?.contains("cancel", ignoreCase = true) == true
+                                        || e.message?.contains("interrupted", ignoreCase = true) == true
+
+                                val errorMsg = e.message ?: e.localizedMessage ?: "Download failed: Unknown error"
+                                Log.e("RVDownloader", "startDownload failed: $errorMsg", e)
 
                                 sendProgressEvent(mapOf(
                                     "taskId" to taskId,
                                     "status" to if (isCancelled) "cancelled" else "failed",
-                                    "error" to (e.localizedMessage ?: "Download failed"),
-                                    "line" to (e.localizedMessage ?: "")
+                                    "error" to errorMsg,
+                                    "line" to errorMsg
                                 ))
                             }
                         }
@@ -464,7 +455,7 @@ class MainActivity : FlutterActivity() {
 
             val ext = MimeTypeMap.getFileExtensionFromUrl(Uri.fromFile(file).toString())
             val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
-                ?: if (filePath.endsWith(".mp3")) "audio/mpeg" else "video/*"
+                ?: if (filePath.endsWith(".mp3") || filePath.endsWith(".m4a")) "audio/*" else "video/*"
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, mimeType)
@@ -492,7 +483,7 @@ class MainActivity : FlutterActivity() {
 
             val ext = MimeTypeMap.getFileExtensionFromUrl(Uri.fromFile(file).toString())
             val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
-                ?: if (filePath.endsWith(".mp3")) "audio/mpeg" else "video/*"
+                ?: if (filePath.endsWith(".mp3") || filePath.endsWith(".m4a")) "audio/*" else "video/*"
 
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = mimeType

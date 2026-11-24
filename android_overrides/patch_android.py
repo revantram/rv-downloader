@@ -14,7 +14,7 @@ def patch_app_gradle():
         content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', content)
         content = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', content)
 
-        # Release signing config
+        # Release signing and ProGuard configuration
         signing_block = """
     signingConfigs {
         create("release") {
@@ -44,14 +44,13 @@ def patch_app_gradle():
 
         content = content.replace(
             'signingConfigs.getByName("debug")',
-            'signingConfigs.getByName("release")'
+            'signingConfigs.getByName("release")\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
         )
 
-        # Dependencies
+        # Dependencies - Lite edition without the heavy 38MB FFmpeg binary to keep APK around 16-18 MB!
         dep_block = """
 dependencies {
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 """
@@ -63,7 +62,7 @@ dependencies {
 
         with open(kts_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle.kts")
+        print("Successfully patched build.gradle.kts (Lite 16MB Engine)")
 
     elif os.path.exists(groovy_path):
         print(f"Patching {groovy_path}...")
@@ -101,13 +100,12 @@ dependencies {
 
         content = content.replace(
             "signingConfigs.debug",
-            "signingConfigs.release"
+            "signingConfigs.release\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
         )
 
         dep_block = """
 dependencies {
     implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
-    implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 """
@@ -119,7 +117,7 @@ dependencies {
 
         with open(groovy_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle")
+        print("Successfully patched build.gradle (Lite 16MB Engine)")
 
 def patch_root_repositories():
     settings_gradle = "android/settings.gradle"

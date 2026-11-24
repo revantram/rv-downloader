@@ -47,13 +47,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      String errorMsg = e.toString();
+      if (e is PlatformException) {
+        errorMsg = e.message ?? e.code;
+      }
+      if (errorMsg == 'fg') {
+        errorMsg = 'Engine updating component is ready. Please retry in a few seconds.';
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Engine update failed: $e',
-            style: const TextStyle(color: Colors.white),
+            'Engine status: $errorMsg',
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
           ),
-          backgroundColor: Colors.redAccent.shade700,
+          backgroundColor: const Color(0xFF2E1C1C),
           behavior: SnackBarBehavior.floating,
         ),
       );

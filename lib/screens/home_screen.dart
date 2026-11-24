@@ -198,7 +198,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  void _showErrorDialog(String error) {
+  void _showErrorDialog(dynamic error) {
+    String cleanMessage = error.toString();
+    if (error is PlatformException) {
+      cleanMessage = error.message ?? error.code;
+    }
+
+    if (cleanMessage.contains('HTTP Error 403') || cleanMessage.contains('Forbidden')) {
+      cleanMessage = 'Access was restricted by the platform. The media might be private or requires an account login.';
+    } else if (cleanMessage.contains('Unsupported URL') || cleanMessage.contains('is not a valid URL')) {
+      cleanMessage = 'This URL does not appear to contain downloadable media or is not supported.';
+    } else if (cleanMessage == 'fg' || cleanMessage.contains('instance not initialized')) {
+      cleanMessage = 'yt-dlp engine is loading its native components. Please wait a moment and try again.';
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -214,17 +227,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             Icon(Icons.warning_amber_rounded, color: Color(0xFFF87171), size: 26),
             SizedBox(width: 10),
-            Text('Link Restricted / Error',
-                style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text('Download Notice',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
           ],
         ),
         content: SingleChildScrollView(
           child: Text(
-            error.contains('HTTP Error 403')
-                ? 'Access was forbidden by the platform. You may need to update the yt-dlp engine or the link requires user login.'
-                : error,
+            cleanMessage,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.85),
               fontSize: 13,
               height: 1.4,
             ),

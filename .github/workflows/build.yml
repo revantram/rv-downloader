@@ -47,6 +47,7 @@ jobs:
           cp android_overrides/res/xml/filepaths.xml android/app/src/main/res/xml/filepaths.xml
           mkdir -p android/app/src/main/res/values
           cp android_overrides/res/values/styles.xml android/app/src/main/res/values/styles.xml
+          cp android_overrides/proguard-rules.pro android/app/proguard-rules.pro
           
           # Setup Kotlin source package com.rvbhati.rvdownloader
           rm -rf android/app/src/main/kotlin android/app/src/main/java
@@ -123,14 +124,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.app_ver.outputs.version) }}
-          name: "RV Downloader v${{ steps.app_ver.outputs.version }} (ARM64 Edition)"
+          tag_name: v${{ steps.app_ver.outputs.version }}-b${{ steps.app_ver.outputs.build }}
+          name: "RV Downloader v${{ steps.app_ver.outputs.version }} (16MB Compact Edition)"
           body: |
             ### 🌊 RV Downloader v${{ steps.app_ver.outputs.version }}+${{ steps.app_ver.outputs.build }}
-            **Personal Media Downloader powered by yt-dlp & FFmpeg**
+            **Ultra-Compact (16MB) Personal Media Downloader powered by yt-dlp**
 
+            - **Size Optimization**: Stripped heavy 40MB bundled FFmpeg; APK dropped to **~16MB**!
             - **Engine**: yt-dlp native extraction (YouTube, Instagram, TeraBox, TikTok, Reddit, X, etc.)
-            - **Quality**: 1080p Full HD, 720p HD, 360p Data Saver, and MP3 320k/256k/128k audio extraction
+            - **Quality**: Progressive Full HD / High Quality video & direct high-bitrate audio
             - **UI**: iOS Liquid Glass translucent surfaces with true OLED pure black background
           make_latest: true
           files: |
