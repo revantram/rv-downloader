@@ -1,0 +1,139 @@
+name: Build LiquidDL APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Unpack project.zip (if present)
+        run: |
+          if [ -f project.zip ]; then
+            unzip -o project.zip -d .
+          fi
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate Android Platform Project
+        run: |
+          if [ ! -f android/settings.gradle ] && [ ! -f android/settings.gradle.kts ]; then
+            rm -rf /tmp/gen
+            flutter create --platforms=android --org com.rvbhati --project-name liquid_dl /tmp/gen
+            mkdir -p android
+            cp -r /tmp/gen/android/* ./android/
+          fi
+
+      - name: Apply Android Overrides & yt-dlp Native Bridge
+        run: |
+          cp android_overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/xml
+          cp android_overrides/res/xml/filepaths.xml android/app/src/main/res/xml/filepaths.xml
+          mkdir -p android/app/src/main/res/values
+          cp android_overrides/res/values/styles.xml android/app/src/main/res/values/styles.xml
+          
+          # Setup Kotlin source package com.rvbhati.liquiddl
+          rm -rf android/app/src/main/kotlin android/app/src/main/java
+          mkdir -p android/app/src/main/kotlin/com/rvbhati/liquiddl
+          cp android_overrides/MainActivity.kt android/app/src/main/kotlin/com/rvbhati/liquiddl/MainActivity.kt
+
+          # Package name replacement in build scripts if needed
+          sed -i 's/com\.rvbhati\.liquid_dl/com.rvbhati.liquiddl/g' android/app/build.gradle* || true
+
+          # Release Keystore & Gradle dependencies patching
+          cp android_overrides/keystore/release.jks android/app/release.jks
+          python3 android_overrides/patch_android.py
+
+      - name: Configure Gradle Wrapper and Reliable Mirrors
+        run: |
+          GRADLE_ZIP="gradle-9.5.0-bin.zip"
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            DETECTED_ZIP=$(grep -oE 'gradle-[0-9.]+-(bin|all)\.zip' android/gradle/wrapper/gradle-wrapper.properties | head -n1 || true)
+            if [ -n "$DETECTED_ZIP" ]; then
+              GRADLE_ZIP="$DETECTED_ZIP"
+            fi
+          fi
+          echo "Target Gradle distribution: $GRADLE_ZIP"
+
+          curl -fL --retry 5 --retry-delay 3 -o "/tmp/$GRADLE_ZIP" "https://services.gradle.org/distributions/$GRADLE_ZIP" || \
+          curl -fL --retry 5 --retry-delay 3 -o "/tmp/$GRADLE_ZIP" "https://mirrors.cloud.tencent.com/gradle/$GRADLE_ZIP"
+
+          if [ -f android/gradle/wrapper/gradle-wrapper.properties ]; then
+            sed -i "s|^distributionUrl=.*|distributionUrl=file\\\\:/tmp/$GRADLE_ZIP|" android/gradle/wrapper/gradle-wrapper.properties
+          fi
+
+          mkdir -p ~/.gradle/init.d
+          cp android_overrides/mirror.gradle ~/.gradle/init.d/mirror.gradle
+
+      - name: Fetch Dependencies
+        run: |
+          flutter pub get
+
+      - name: Build Optimized Release APK (ARM64)
+        run: |
+          flutter build apk --release --target-platform android-arm64 --split-per-abi
+
+      - name: Prepare Artifacts
+        run: |
+          cd build/app/outputs/flutter-apk
+          ARM64_FILE=$(ls app*arm64*.apk app-release.apk 2>/dev/null | head -n1)
+          echo "Selected APK: $ARM64_FILE"
+          cp "$ARM64_FILE" LiquidDL-arm64.apk
+          cp "$ARM64_FILE" LiquidDL.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiquidDL-ARM64-Release-APK
+          path: build/app/outputs/flutter-apk/LiquidDL-arm64.apk
+
+      - name: Extract App Version
+        id: app_ver
+        run: |
+          VER=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}' | cut -d'+' -f1)
+          BUILD_NUM=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}' | cut -d'+' -f2)
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "build=$BUILD_NUM" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.app_ver.outputs.version) }}
+          name: "LiquidDL v${{ steps.app_ver.outputs.version }} (Standalone Media Downloader)"
+          body: |
+            ### 🌊 LiquidDL v${{ steps.app_ver.outputs.version }}+${{ steps.app_ver.outputs.build }}
+            **Private Personal Media Downloader powered by yt-dlp & FFmpeg**
+
+            - **Engine**: yt-dlp native extraction (YouTube, Instagram, TeraBox, TikTok, Reddit, X, etc.)
+            - **Quality**: 1080p Full HD, 720p HD, 360p Data Saver, and MP3 320k/256k/128k audio extraction
+            - **UI**: iOS Liquid Glass translucent surfaces with true OLED pure black background
+            - **Local Library**: In-app management, storage size tracking, opening, and sharing
+          make_latest: true
+          files: |
+            build/app/outputs/flutter-apk/LiquidDL-arm64.apk
+            build/app/outputs/flutter-apk/LiquidDL.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
