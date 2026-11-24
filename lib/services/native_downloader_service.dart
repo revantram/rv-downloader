@@ -144,7 +144,7 @@ class NativeDownloaderService extends ChangeNotifier {
             webpageUrl: f.downloadUrl,
             description: f.sizeFormatted ?? '',
             formats: [
-              FormatOption(
+              MediaFormat(
                 formatId: 'original',
                 formatNote: f.sizeFormatted != null
                     ? 'Original File (${f.sizeFormatted})'

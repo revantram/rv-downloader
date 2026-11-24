@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               webpageUrl: f.downloadUrl,
               description: f.sizeFormatted ?? '',
               formats: [
-                FormatOption(
+                MediaFormat(
                   formatId: 'original',
                   formatNote: f.sizeFormatted != null
                       ? 'Original File (${f.sizeFormatted})'
