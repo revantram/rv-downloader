@@ -7,7 +7,7 @@ import '../services/update_service.dart';
 class DeveloperOptionsCard extends StatelessWidget {
   const DeveloperOptionsCard({super.key});
 
-  static const String developerName = 'रेवंतराम भाती';
+  static const String developerName = 'रेवंतराम भाटी';
   static const String developerEmail = 'revantrambhati@gmail.com';
   static const String developerPhone = '+91 8696663615';
   static const String developerPhoneRaw = '918696663615';
