@@ -14,7 +14,12 @@ def patch_app_gradle():
         content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', content)
         content = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', content)
 
+        # Enable MultiDex
+        if "multiDexEnabled" not in content:
+            content = re.sub(r'(targetSdk\s*=\s*\d+)', r'\1\n        multiDexEnabled = true', content)
+
         # Release signing and ProGuard configuration
+
         signing_block = """
     signingConfigs {
         create("release") {
@@ -50,6 +55,7 @@ def patch_app_gradle():
         # Dependencies - Lite edition with explicit commons-compress to ensure complete Zip64 & unarchiver support
         dep_block = """
 dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
     implementation("org.apache.commons:commons-compress:1.26.1")
     implementation("androidx.core:core-ktx:1.12.0")
@@ -73,6 +79,10 @@ dependencies {
         # Update minSdk
         content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24', content)
         content = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', content)
+
+        # Enable MultiDex
+        if "multiDexEnabled" not in content:
+            content = re.sub(r'(targetSdkVersion\s+\d+)', r'\1\n        multiDexEnabled true', content)
 
         signing_block = """
     signingConfigs {
@@ -106,6 +116,7 @@ dependencies {
 
         dep_block = """
 dependencies {
+    implementation 'androidx.multidex:multidex:2.0.1'
     implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
     implementation 'org.apache.commons:commons-compress:1.26.1'
     implementation 'androidx.core:core-ktx:1.12.0'

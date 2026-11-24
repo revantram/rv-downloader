@@ -1,13 +1,17 @@
-# Optimization and shrinkage controls
+# Preserve readable class names and exception types
 -dontobfuscate
--dontoptimize
--dontshrink
+
+# MultiDex support
+-keep class androidx.multidex.** { *; }
 
 # Keep Apache Commons Compress classes and constructors completely
 -keep class org.apache.commons.compress.** { *; }
 -keep interface org.apache.commons.compress.** { *; }
--keepclassmembers class org.apache.commons.compress.** { *; }
--keepclassmembernames class org.apache.commons.compress.** { *; }
+-keepclassmembers class org.apache.commons.compress.** {
+    public <init>();
+    public <init>(...);
+    *;
+}
 -keep class org.apache.commons.compress.archivers.zip.** { *; }
 
 # Keep YoutubeDL and yt-dlp native bindings & reflection models
