@@ -340,7 +340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Built strictly for private personal offline backup use. Bundled with native yt-dlp Python runtime and FFmpeg multimedia engine.',
+                    'Built strictly for private personal offline backup use. Powered by native yt-dlp Python engine.',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.5),
                       fontSize: 11,
@@ -349,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Version 1.0.0+1 • Architecture ARM64-v8a',
+                    'Version 1.0.3+4 • Architecture ARM64-v8a',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.35),
                       fontSize: 10,

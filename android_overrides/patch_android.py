@@ -44,13 +44,14 @@ def patch_app_gradle():
 
         content = content.replace(
             'signingConfigs.getByName("debug")',
-            'signingConfigs.getByName("release")'
+            'signingConfigs.getByName("release")\n            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")'
         )
 
-        # Dependencies - Lite edition without the heavy 38MB FFmpeg binary to keep APK around 16-18 MB!
+        # Dependencies - Lite edition with explicit commons-compress to ensure complete Zip64 & unarchiver support
         dep_block = """
 dependencies {
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("org.apache.commons:commons-compress:1.26.1")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 """
@@ -100,12 +101,13 @@ dependencies {
 
         content = content.replace(
             "signingConfigs.debug",
-            "signingConfigs.release"
+            "signingConfigs.release\n            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'"
         )
 
         dep_block = """
 dependencies {
     implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+    implementation 'org.apache.commons:commons-compress:1.26.1'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 """

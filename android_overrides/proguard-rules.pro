@@ -1,7 +1,14 @@
-# Optimization and shrinkage
+# Optimization and shrinkage controls
 -dontobfuscate
--optimizationpasses 5
--allowaccessmodification
+-dontoptimize
+-dontshrink
+
+# Keep Apache Commons Compress classes and constructors completely
+-keep class org.apache.commons.compress.** { *; }
+-keep interface org.apache.commons.compress.** { *; }
+-keepclassmembers class org.apache.commons.compress.** { *; }
+-keepclassmembernames class org.apache.commons.compress.** { *; }
+-keep class org.apache.commons.compress.archivers.zip.** { *; }
 
 # Keep YoutubeDL and yt-dlp native bindings & reflection models
 -keep class com.yausername.** { *; }
@@ -23,13 +30,5 @@
     native <methods>;
 }
 
-# Ignore warnings from dynamic dependencies
+# Ignore warnings from all dynamic dependencies and missing play-core classes
 -dontwarn **
--dontwarn com.google.android.play.core.**
--dontwarn io.flutter.**
--dontwarn com.yausername.**
--dontwarn io.github.junkfood02.**
--dontwarn okio.**
--dontwarn org.bouncycastle.**
--dontwarn com.fasterxml.jackson.**
--dontwarn org.apache.commons.compress.**
