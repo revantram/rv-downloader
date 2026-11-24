@@ -10,11 +10,22 @@ def patch_app_gradle():
         with open(kts_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Update minSdk to at least 24
+        # Update minSdk to 24
         content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', content)
         content = re.sub(r'minSdk\s*=\s*\d+', 'minSdk = 24', content)
 
-        # Signing config
+        # Restrict NDK to arm64-v8a only
+        ndk_filter = """
+        ndk {
+            abiFilters.clear()
+            abiFilters.add("arm64-v8a")
+        }
+"""
+        if "abiFilters.add(\"arm64-v8a\")" not in content:
+            if "defaultConfig {" in content:
+                content = content.replace("defaultConfig {", "defaultConfig {" + ndk_filter)
+
+        # Release signing and R8 minification/shrinking
         signing_block = """
     signingConfigs {
         create("release") {
@@ -31,6 +42,8 @@ def patch_app_gradle():
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "DebugProbesKt.bin"
+            excludes += "/META-INF/*.version"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -39,7 +52,12 @@ def patch_app_gradle():
 """
         if 'create("release")' not in content:
             content = content.replace("buildTypes {", signing_block + "\n    buildTypes {")
-            content = content.replace('signingConfigs.getByName("debug")', 'signingConfigs.getByName("release")')
+
+        # Configure release build type with R8 shrinking
+        content = content.replace(
+            'signingConfigs.getByName("debug")',
+            'signingConfigs.getByName("release")\n            isMinifyEnabled = true\n            isShrinkResources = true\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
+        )
 
         # Dependencies
         dep_block = """
@@ -57,7 +75,7 @@ dependencies {
 
         with open(kts_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle.kts")
+        print("Successfully patched build.gradle.kts with R8 shrinking & ARM64 optimization")
 
     elif os.path.exists(groovy_path):
         print(f"Patching {groovy_path}...")
@@ -67,6 +85,16 @@ dependencies {
         # Update minSdk
         content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24', content)
         content = re.sub(r'minSdkVersion\s+\d+', 'minSdkVersion 24', content)
+
+        # Restrict NDK
+        ndk_filter = """
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+"""
+        if "'arm64-v8a'" not in content:
+            if "defaultConfig {" in content:
+                content = content.replace("defaultConfig {", "defaultConfig {" + ndk_filter)
 
         signing_block = """
     signingConfigs {
@@ -83,13 +111,17 @@ dependencies {
     }
     packagingOptions {
         resources {
-            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1']
+            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1', 'DebugProbesKt.bin']
         }
     }
 """
         if "signingConfigs {" not in content or "release {" not in content:
             content = content.replace("buildTypes {", signing_block + "\n    buildTypes {")
-            content = content.replace("signingConfigs.debug", "signingConfigs.release")
+
+        content = content.replace(
+            "signingConfigs.debug",
+            "signingConfigs.release\n            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
+        )
 
         dep_block = """
 dependencies {
@@ -106,7 +138,7 @@ dependencies {
 
         with open(groovy_path, "w", encoding="utf-8") as f:
             f.write(content)
-        print("Successfully patched build.gradle")
+        print("Successfully patched build.gradle with R8 shrinking & ARM64 optimization")
 
 def patch_root_repositories():
     settings_gradle = "android/settings.gradle"
@@ -118,7 +150,6 @@ def patch_root_repositories():
         if os.path.exists(file_path):
             with open(file_path, "r", encoding="utf-8") as f:
                 c = f.read()
-            # Ensure mavenCentral is present
             if "mavenCentral()" not in c and "mavenCentral" not in c:
                 c = c.replace("google()", "google()\n        mavenCentral()")
             with open(file_path, "w", encoding="utf-8") as f:

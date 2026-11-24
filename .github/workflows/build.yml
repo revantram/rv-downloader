@@ -40,13 +40,14 @@ jobs:
             cp -r /tmp/gen/android/* ./android/
           fi
 
-      - name: Apply Android Overrides & yt-dlp Native Bridge
+      - name: Apply Android Overrides & Size Optimizations
         run: |
           cp android_overrides/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           mkdir -p android/app/src/main/res/xml
           cp android_overrides/res/xml/filepaths.xml android/app/src/main/res/xml/filepaths.xml
           mkdir -p android/app/src/main/res/values
           cp android_overrides/res/values/styles.xml android/app/src/main/res/values/styles.xml
+          cp android_overrides/proguard-rules.pro android/app/proguard-rules.pro
           
           # Setup Kotlin source package com.rvbhati.rvdownloader
           rm -rf android/app/src/main/kotlin android/app/src/main/java
@@ -85,15 +86,22 @@ jobs:
         run: |
           flutter pub get
 
-      - name: Build Optimized Release APK (ARM64)
+      - name: Build Ultra-Optimized Release APK (ARM64)
         run: |
-          flutter build apk --release --target-platform android-arm64 --split-per-abi
+          mkdir -p build/app/outputs/symbols
+          flutter build apk --release \
+            --target-platform android-arm64 \
+            --split-per-abi \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols \
+            --tree-shake-icons
 
-      - name: Prepare Artifacts
+      - name: Prepare Artifacts & Print File Size
         run: |
           cd build/app/outputs/flutter-apk
           ARM64_FILE=$(ls app*arm64*.apk app-release.apk 2>/dev/null | head -n1)
-          echo "Selected APK: $ARM64_FILE"
+          echo "Selected Optimized APK: $ARM64_FILE"
+          ls -lh "$ARM64_FILE"
           cp "$ARM64_FILE" RV-Downloader-arm64.apk
           cp "$ARM64_FILE" RV-Downloader.apk
 
@@ -116,15 +124,15 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.app_ver.outputs.version) }}
-          name: "RV Downloader v${{ steps.app_ver.outputs.version }} (Standalone Edition)"
+          name: "RV Downloader v${{ steps.app_ver.outputs.version }} (ARM64 Optimized Edition)"
           body: |
             ### 🌊 RV Downloader v${{ steps.app_ver.outputs.version }}+${{ steps.app_ver.outputs.build }}
-            **Private Personal Media Downloader powered by yt-dlp & FFmpeg**
+            **Personal Media Downloader powered by yt-dlp & FFmpeg**
 
+            - **Size Optimization**: R8 code minification, resource shrinking, stripped symbols, tree-shaken assets
             - **Engine**: yt-dlp native extraction (YouTube, Instagram, TeraBox, TikTok, Reddit, X, etc.)
             - **Quality**: 1080p Full HD, 720p HD, 360p Data Saver, and MP3 320k/256k/128k audio extraction
             - **UI**: iOS Liquid Glass translucent surfaces with true OLED pure black background
-            - **Local Library**: In-app management, storage size tracking, opening, and sharing
           make_latest: true
           files: |
             build/app/outputs/flutter-apk/RV-Downloader-arm64.apk
