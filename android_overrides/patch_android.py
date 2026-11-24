@@ -44,7 +44,7 @@ def patch_app_gradle():
 
         content = content.replace(
             'signingConfigs.getByName("debug")',
-            'signingConfigs.getByName("release")\n            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")'
+            'signingConfigs.getByName("release")\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
         )
 
         # Dependencies - Lite edition with explicit commons-compress to ensure complete Zip64 & unarchiver support
@@ -101,7 +101,7 @@ dependencies {
 
         content = content.replace(
             "signingConfigs.debug",
-            "signingConfigs.release\n            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'"
+            "signingConfigs.release\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
         )
 
         dep_block = """
