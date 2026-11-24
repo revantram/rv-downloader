@@ -44,7 +44,7 @@ def patch_app_gradle():
 
         content = content.replace(
             'signingConfigs.getByName("debug")',
-            'signingConfigs.getByName("release")\n            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")'
+            'signingConfigs.getByName("release")'
         )
 
         # Dependencies - Lite edition without the heavy 38MB FFmpeg binary to keep APK around 16-18 MB!
@@ -100,7 +100,7 @@ dependencies {
 
         content = content.replace(
             "signingConfigs.debug",
-            "signingConfigs.release\n            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'"
+            "signingConfigs.release"
         )
 
         dep_block = """

@@ -24,6 +24,9 @@
 }
 
 # Ignore warnings from dynamic dependencies
+-dontwarn **
+-dontwarn com.google.android.play.core.**
+-dontwarn io.flutter.**
 -dontwarn com.yausername.**
 -dontwarn io.github.junkfood02.**
 -dontwarn okio.**
