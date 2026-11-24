@@ -189,7 +189,7 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("--no-playlist")
                                 request.addOption("--no-check-certificates")
                                 request.addOption("--no-warnings")
-                                request.addOption("--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+                                request.addOption("--extractor-args", "instagram:app_id=ios")
                                 
                                 val info: VideoInfo = YoutubeDL.getInstance().getInfo(request)
                                 val formatsList = mutableListOf<Map<String, Any?>>()
@@ -274,13 +274,13 @@ class MainActivity : FlutterActivity() {
                                 request.addOption("--no-playlist")
                                 request.addOption("--no-check-certificates")
                                 request.addOption("--no-warnings")
-                                request.addOption("--user-agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36")
+                                request.addOption("--extractor-args", "instagram:app_id=ios")
 
                                 val outputTemplate = if (!customTitle.isNullOrBlank()) {
                                     val safeName = customTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                                     "${outDir.absolutePath}/$safeName.%(ext)s"
                                 } else {
-                                    "${outDir.absolutePath}/%(title)s.%(ext)s"
+                                    "${outDir.absolutePath}/%(title).100s-%(id)s.%(ext)s"
                                 }
                                 request.addOption("-o", outputTemplate)
 
@@ -290,10 +290,10 @@ class MainActivity : FlutterActivity() {
                                 } else {
                                     // Direct progressive MP4 stream (Instagram, TeraBox, TikTok, YouTube 720p/360p)
                                     when (quality.lowercase()) {
-                                        "1080p" -> request.addOption("-f", "best[height<=1080][ext=mp4]/best[height<=1080]/bestvideo[height<=1080]+bestaudio/best")
-                                        "720p" -> request.addOption("-f", "best[height<=720][ext=mp4]/best[height<=720]/best")
-                                        "480p" -> request.addOption("-f", "best[height<=480][ext=mp4]/best[height<=480]/best")
-                                        "360p" -> request.addOption("-f", "best[height<=360][ext=mp4]/best[height<=360]/best")
+                                        "1080p" -> request.addOption("-f", "best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best")
+                                        "720p" -> request.addOption("-f", "best[height<=720][ext=mp4]/best[height<=720]/best[ext=mp4]/best")
+                                        "480p" -> request.addOption("-f", "best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best")
+                                        "360p" -> request.addOption("-f", "best[height<=360][ext=mp4]/best[height<=360]/best[ext=mp4]/best")
                                         else -> request.addOption("-f", "best[ext=mp4]/best")
                                     }
                                 }
